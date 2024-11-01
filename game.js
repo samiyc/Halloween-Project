@@ -1,5 +1,8 @@
-// game.js
 
+import { Enemy } from './enemy.js';
+import { Boss } from './boss.js';
+
+// game.js
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -8,65 +11,9 @@ let strokePath = [];
 let enemies = [];
 let enemiesDefeated = 0;
 let gameRunning = true;
-const maxEnemiesDefeated = 30;
 const enemySize = 25;
 const minStrokeLength = 50;
-
-// Enemy class with square shape and a stroke sequence on top
-class Enemy {
-    constructor() {
-        this.x = Math.random() * (canvas.width - enemySize);
-        this.y = 0; // Start at the top
-        this.size = enemySize;
-        this.color = "#AAA"; // Light grey
-        this.speed = 0.5 + Math.random() * 1.5; // Random speed
-        this.sequence = this.generateSequence(); // Sequence to be matched
-    }
-
-    // Generate a random sequence of 1 to 5 symbols using "_", "|", "V", and "Ʌ"
-    generateSequence() {
-        const symbols = ["_", "|", "V", "Ʌ"];
-        const length = Math.floor(Math.random() * 5) + 1;
-        return Array.from(
-            { length },
-            () => symbols[Math.floor(Math.random() * symbols.length)]
-        ).join("");
-    }
-
-    draw() {
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.size, this.size);
-
-        // Draw the sequence above the enemy
-        ctx.fillStyle = "white";
-        ctx.font = "16px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(this.sequence, this.x + this.size / 2, this.y - 10);
-    }
-
-    update() {
-        this.y += this.speed; // Move down
-    }
-
-    // Check if stroke matches the required type and decrement sequence if so
-    decrementSequence(strokeOrientation) {
-        // Check the first symbol of the sequence against the stroke type
-        if (
-            (strokeOrientation === "horizontal" && this.sequence.startsWith("_")) ||
-            (strokeOrientation === "vertical" && this.sequence.startsWith("|")) ||
-            (strokeOrientation === "V" && this.sequence.startsWith("V")) ||
-            (strokeOrientation === "Ʌ" && this.sequence.startsWith("Ʌ"))
-        ) {
-            // Remove the first symbol if it matches
-            this.sequence = this.sequence.slice(1);
-        }
-    }
-
-    // Check if the enemy has been defeated
-    isDefeated() {
-        return this.sequence.length === 0;
-    }
-}
+let boss;  // Single boss instance
 
 // Start drawing on mousedown
 canvas.addEventListener("mousedown", (e) => {
@@ -145,12 +92,23 @@ function getStrokeOrientation(path) {
 
 // Generate random enemies at the top of the screen
 function spawnEnemy() {
-    enemies.push(new Enemy());
+    enemies.push(new Enemy(canvas, ctx));
 }
 
 // Draw and update enemies, and check for loss condition
 function drawEnemies() {
     if (!gameRunning) return;
+
+    if (boss) {
+        boss.draw();
+        boss.update();
+
+        // Check if the bosss reached the bottom (lose condition)
+        if (boss.y > canvas.height) {
+            gameOver(false);
+        }
+    }
+
     for (let enemy of enemies) {
         enemy.draw();
         enemy.update();
@@ -164,6 +122,14 @@ function drawEnemies() {
 
 // Check if the stroke orientation matches any enemy's type and remove or update all matching enemies
 function checkForHits(strokeOrientation) {
+    if (boss) {
+        boss.decrementSequence(strokeOrientation);
+        boss.resetOrDefeat();
+        if (boss.isDefeated()) {
+            boss = null;
+        }
+    }
+
     for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         enemy.decrementSequence(strokeOrientation);
@@ -173,9 +139,13 @@ function checkForHits(strokeOrientation) {
             enemiesDefeated++;
         }
     }
+}
 
-    // Check for win condition
-    if (enemiesDefeated >= maxEnemiesDefeated) gameOver(true);
+// Check if all enemies and boss are defeated
+function checkWinCondition() {
+    if (enemiesDefeated >= maxEnemiesDefeated && !boss) {
+        gameOver(true);
+    }
 }
 
 // Handle game over for win/lose conditions
@@ -194,7 +164,7 @@ function gameOver(won) {
     );
     ctx.font = "24px Arial";
     ctx.fillText(
-        `${enemiesDefeated}/${maxEnemiesDefeated}`,
+        `Ghost Eliminated : ${enemiesDefeated}`,
         canvas.width / 2,
         canvas.height / 2 - 20
     );
@@ -225,7 +195,7 @@ function drawCounter() {
     ctx.font = "15px Arial";
     ctx.textAlign = "left";
     ctx.fillText(
-        `Ghost Eliminated : ${enemiesDefeated}/${maxEnemiesDefeated}`,
+        `Ghost Eliminated : ${enemiesDefeated}`,
         10,
         canvas.height - 20
     );
@@ -239,13 +209,23 @@ function gameLoop() {
     drawEnemies();
     drawCounter(); // Draw the counter on each frame
 
-    if (Math.random() < 0.02) {
+    if (Math.random() < 0.015) {
         // Spawn enemies with a small probability
-        spawnEnemy();
+        spawnEnemy(canvas, ctx);
     }
 
     requestAnimationFrame(gameLoop);
+
+    // Check if boss is defeated
+    if (!boss) {
+        gameOver(true);
+    }
+}
+
+function initializeBoss() {
+    boss = new Boss(canvas, ctx);
 }
 
 // Start the game loop
+initializeBoss();
 gameLoop();
