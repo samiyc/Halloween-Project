@@ -8,7 +8,7 @@ let strokePath = [];
 let enemies = [];
 let enemiesDefeated = 0;
 let gameRunning = true;
-const maxEnemiesDefeated = 10;
+const maxEnemiesDefeated = 30;
 const enemySize = 25;
 const minStrokeLength = 50;
 
@@ -19,17 +19,17 @@ class Enemy {
         this.y = 0; // Start at the top
         this.size = enemySize;
         this.color = "#AAA"; // Light grey
-        this.speed = 1 + Math.random() * 1.5; // Random speed
+        this.speed = 0.5 + Math.random() * 1.5; // Random speed
         this.sequence = this.generateSequence(); // Sequence to be matched
     }
 
-    // Generate a random sequence of 1 to 5 symbols using "_" and "|"
+    // Generate a random sequence of 1 to 5 symbols using "_", "|", "V", and "Ʌ"
     generateSequence() {
-        const symbols = ["_", "|"];
+        const symbols = ["_", "|", "V", "Ʌ"];
         const length = Math.floor(Math.random() * 5) + 1;
         return Array.from(
             { length },
-            () => symbols[Math.floor(Math.random() * 2)]
+            () => symbols[Math.floor(Math.random() * symbols.length)]
         ).join("");
     }
 
@@ -53,7 +53,9 @@ class Enemy {
         // Check the first symbol of the sequence against the stroke type
         if (
             (strokeOrientation === "horizontal" && this.sequence.startsWith("_")) ||
-            (strokeOrientation === "vertical" && this.sequence.startsWith("|"))
+            (strokeOrientation === "vertical" && this.sequence.startsWith("|")) ||
+            (strokeOrientation === "V" && this.sequence.startsWith("V")) ||
+            (strokeOrientation === "Ʌ" && this.sequence.startsWith("Ʌ"))
         ) {
             // Remove the first symbol if it matches
             this.sequence = this.sequence.slice(1);
@@ -108,18 +110,36 @@ function getStrokeLength(path) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-// Determine if stroke is more horizontal or vertical based on 45° threshold
+// Determine if stroke is horizontal, vertical, "V", or "Ʌ" based on criteria
 function getStrokeOrientation(path) {
     const dx = path[path.length - 1].x - path[0].x;
     const dy = path[path.length - 1].y - path[0].y;
 
-    const angle = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI));
+    // Check for "V" and "Ʌ" shapes by finding the middle point
+    const midpoint = path[Math.floor(path.length / 2)];
+    const start = path[0];
+    const end = path[path.length - 1];
 
-    // Horizontal if angle is within 45° of the horizontal axis
+    // Calculate width and depth of the stroke
+    const width = Math.abs(end.x - start.x);
+    const midpointDepth = Math.min(midpoint.y - start.y, midpoint.y - end.y);
+    const midpointHeight = Math.min(start.y - midpoint.y, end.y - midpoint.y);
+
+    // Check if the midpoint is at least 50% below for "V"
+    if (midpointDepth > 0.2 * width) {
+        return "V";
+    }
+
+    // Check if the midpoint is at least 50% above for "Ʌ"
+    if (midpointHeight > 0.2 * width) {
+        return "Ʌ";
+    }
+
+    // Otherwise, determine if stroke is horizontal or vertical
+    const angle = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI));
     if (angle <= 45 || angle >= 135) {
         return "horizontal";
     }
-    // Vertical if angle is within 45° of the vertical axis
     return "vertical";
 }
 
