@@ -111,7 +111,7 @@ function drawEnemies() {
 
     for (let enemy of enemies) {
         enemy.draw();
-        enemy.update();
+        enemy.update(boss);
 
         // Check if enemy reached the bottom (lose condition)
         if (enemy.y > canvas.height) {
@@ -125,9 +125,6 @@ function checkForHits(strokeOrientation) {
     if (boss) {
         boss.decrementSequence(strokeOrientation);
         boss.resetOrDefeat();
-        if (boss.isDefeated()) {
-            boss = null;
-        }
     }
 
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -217,7 +214,7 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 
     // Check if boss is defeated
-    if (!boss) {
+    if (boss.isDefeated()) {
         gameOver(true);
     }
 }

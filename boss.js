@@ -8,16 +8,19 @@ export class Boss {
         this.lives = 3;
         this.x = (Math.random() * 0.4 + 0.3) * canvas.width; // Position between 30% and 70%
         this.y = 0; // Start at the top
-        this.size = 50; // Boss is 2x bigger
-        this.color = "#FF4500"; // Distinct color for the boss
+        this.size = 100; // Boss is 2x bigger
+        this.baseColor = "#FF4500"; // Normal color
+        this.invincibleColor = "#888"; // Color during invincible state (gold)
+        this.color = this.baseColor; // Initial color
         this.speed = 0.25; // 75% slower than normal enemies
+        this.invincible = false; // Invincible state flag
         this.sequence = this.generateSequence(); // Sequence to be matched
     }
 
     // Generate a random sequence of symbols using "_", "|", "V", and "Ʌ"
     generateSequence() {
         const symbols = ["_", "|", "V", "Ʌ"];
-        return Array.from({ length: 10 - this.lives }, () => symbols[Math.floor(Math.random() * symbols.length)]).join("");
+        return Array.from({ length: 6 + this.lives * 2 }, () => symbols[Math.floor(Math.random() * symbols.length)]).join("");
     }
 
     draw() {
@@ -29,11 +32,26 @@ export class Boss {
         this.ctx.font = "16px Arial";
         this.ctx.textAlign = "center";
         this.ctx.fillText(this.sequence, this.x + this.size / 2, this.y - 10);
-        this.ctx.fillText(`Lives: ${this.lives}`, this.x + this.size / 2, this.y + this.size + 20);
+        this.ctx.font = "12px Arial";
+        this.ctx.fillText(`Angry boss`, this.x + this.size / 2, this.y + this.size + 15);
     }
 
     update() {
-        this.y += this.speed; // Move down
+        // Adjust movement based on whether the boss is invincible
+        if (this.invincible) {
+            // Move upward until the boss reaches the top
+            this.y -= 1.5;
+            if (this.y <= 0) {
+                // Reset invincible state at the top and regenerate sequence
+                this.invincible = false;
+                this.sequence = this.generateSequence();
+                this.color = this.baseColor; // Revert to base color
+                this.size -= 15;
+            }
+        } else {
+            // Normal downward movement
+            this.y += this.speed;
+        }
     }
 
     decrementSequence(strokeOrientation) {
@@ -47,21 +65,18 @@ export class Boss {
         }
     }
 
-    // Reset boss position and sequence or handle defeat
+    // Reset boss position with invincible state or handle defeat
     resetOrDefeat() {
-        if (this.sequence.length === 0) {
+        if (!this.invincible && this.sequence.length === 0) {
             this.lives--;
-            if (this.lives > 0) {
-                // Reset position and regenerate sequence
-                this.y = 0;
-                this.sequence = this.generateSequence();
-                this.speed += 0.25;
-            }
+            this.invincible = true; // Activate invincible state
+            this.color = this.invincibleColor; // Change color to indicate invincibility
+            this.speed += 0.25;
         }
     }
 
     // Check if the boss has been defeated
     isDefeated() {
-        return this.lives < 1;
+        return !this.invincible && this.lives < 1;
     }
 }

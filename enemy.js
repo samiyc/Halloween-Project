@@ -34,8 +34,13 @@ export class Enemy {
         this.ctx.fillText(this.sequence, this.x + this.size / 2, this.y - 10);
     }
 
-    update() {
-        this.y += this.speed; // Move down
+    update(boss) {
+        if (boss.lives > 0) {
+            this.y += this.speed; // Move down
+        }
+        else {
+            this.y -= this.speed; // Move up
+        }
     }
 
     // Check if stroke matches the required type and decrement sequence if so
