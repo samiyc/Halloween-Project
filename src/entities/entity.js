@@ -1,0 +1,78 @@
+import { symbolFor } from "../config/glyphs.js";
+
+/**
+ * Base class for anything that carries a glyph sequence and can be worn down.
+ *
+ * Entities hold state and behaviour only — no `canvas`, no `ctx`, no `draw()`.
+ * Rendering lives in `src/render/`. That split is the reason this logic can be
+ * unit-tested under plain Node with no DOM.
+ *
+ * The glyph→symbol comparison that used to be duplicated across Enemy and Boss
+ * now exists once, in `matches()`, delegating to the registry.
+ */
+export class Entity {
+  /**
+   * @param {object} options
+   * @param {number} options.x    Left edge.
+   * @param {number} options.y    Top edge.
+   * @param {number} options.size Square side length.
+   * @param {string} options.sequence
+   */
+  constructor({ x, y, size, sequence }) {
+    this.x = x;
+    this.y = y;
+    this.size = size;
+    this.sequence = sequence;
+  }
+
+  get centerX() {
+    return this.x + this.size / 2;
+  }
+
+  get centerY() {
+    return this.y + this.size / 2;
+  }
+
+  /** The symbol this entity is currently waiting for, or null when cleared. */
+  get nextSymbol() {
+    return this.sequence[0] ?? null;
+  }
+
+  /**
+   * Does a recognised glyph satisfy the head of the sequence?
+   * @param {import("../config/glyphs.js").GlyphId|null} glyphId
+   * @returns {boolean}
+   */
+  matches(glyphId) {
+    const symbol = symbolFor(glyphId);
+    return symbol !== null && this.nextSymbol === symbol;
+  }
+
+  /**
+   * Consumes one symbol if the glyph matches. A mismatch is a no-op — there is
+   * no penalty for a wrong gesture, by design.
+   * @param {import("../config/glyphs.js").GlyphId|null} glyphId
+   * @returns {boolean} whether a symbol was consumed
+   */
+  decrementSequence(glyphId) {
+    if (!this.matches(glyphId)) return false;
+    this.sequence = this.sequence.slice(1);
+    return true;
+  }
+
+  /**
+   * Removes the head symbol whatever it is. Used by the melee auto-attack,
+   * which ignores glyphs entirely.
+   * @returns {string|null} the symbol removed
+   */
+  stripSymbol() {
+    const symbol = this.nextSymbol;
+    if (symbol === null) return null;
+    this.sequence = this.sequence.slice(1);
+    return symbol;
+  }
+
+  isDefeated() {
+    return this.sequence.length === 0;
+  }
+}

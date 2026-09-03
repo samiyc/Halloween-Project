@@ -1,0 +1,25 @@
+{
+  "name": "magic-spell-game",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser game: falling shapes are destroyed by drawing mouse gestures that match their glyph sequence.",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "test": "node --test tests/",
+    "test:watch": "node --test --watch tests/",
+    "test:coverage": "node --test --experimental-test-coverage tests/",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check": "npm run lint && npm test",
+    "serve": "npx --yes serve ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-sonarjs": "^4.2.0",
+    "globals": "^17.12.0"
+  }
+}

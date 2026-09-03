@@ -1,0 +1,31 @@
+# ---- Dependencies -------------------------------------------------------
+node_modules/
+
+# ---- Test / lint output -------------------------------------------------
+coverage/
+.eslintcache
+*.lcov
+
+# ---- Editors & IDEs -----------------------------------------------------
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+*.swp
+*~
+
+# ---- OS clutter ---------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# ---- Logs ---------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# ---- Local env ----------------------------------------------------------
+.env
+.env.local

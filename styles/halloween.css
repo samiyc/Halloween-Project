@@ -1,0 +1,54 @@
+/*
+ * The canvas keeps a fixed internal resolution of 1200x900 (set in
+ * src/config/settings.js) and is scaled by CSS to fill as much of the viewport
+ * as its 4:3 ratio allows.
+ *
+ * The width formula is what makes the vertical space count: the canvas is as
+ * wide as it can be *without* its derived height overflowing the viewport, so
+ * on a wide screen it ends up height-limited rather than capped at some fixed
+ * pixel width.
+ *
+ * Scaling the canvas in CSS only works because PointerTracker.toCanvasPoint()
+ * multiplies mouse coordinates back into the internal resolution. Do not
+ * remove that scaling.
+ */
+
+:root {
+  --page-bg: #bdb9b4;
+  --canvas-bg: #546872;
+  --canvas-border: #545972;
+  --frame: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: var(--frame);
+  background-color: var(--page-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial, Helvetica, sans-serif;
+  overflow: hidden;
+}
+
+#gameCanvas {
+  aspect-ratio: 4 / 3;
+  /* Fallback for browsers without dvh. */
+  width: min(100%, calc((100vh - (2 * var(--frame))) * 4 / 3));
+  width: min(100%, calc((100dvh - (2 * var(--frame))) * 4 / 3));
+  height: auto;
+  display: block;
+  border: 3px solid var(--canvas-border);
+  background-color: var(--canvas-bg);
+  cursor: crosshair;
+  touch-action: none;
+}
