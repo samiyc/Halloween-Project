@@ -53,6 +53,11 @@ aucune dépendance runtime).
 | — | La mêlée se déclenche **seule** toutes les 1,5 s sur la cible la plus proche dans le cercle |
 | Clic | Recommence la partie une fois l'écran de fin affiché |
 
+À venir, non implémenté ([mana-and-spells.md](docs/mana-and-spells.md)) : les
+gestes coûteront de la mana, ramassée sous forme de billes bleues par le
+personnage, et une touche unique (**`E`** ou clic droit) lancera le sort tiré au
+hasard par la dernière orbe jaune ramassée.
+
 Six gestes existent : trait horizontal `_`, trait vertical `|`, chevron bas `V`,
 chevron haut `Ʌ`, éclair `⚡` et spirale `@`. Les deux derniers n'apparaissent
 que sur les ennemis rares (violets).
@@ -65,8 +70,9 @@ que sur les ennemis rares (violets).
 | [docs/gestures.md](docs/gestures.md) | Reconnaissance des gestes, seuils, **comment ajouter un geste** |
 | [docs/gameplay.md](docs/gameplay.md) | Règles, cycle du boss, tous les paramètres réglables |
 | [docs/quality.md](docs/quality.md) | Tests et lint : conventions et budget de complexité |
-| [docs/rewards.md](docs/rewards.md) | **Direction retenue** : récompenses à ramasser, prise de risque |
-| [docs/spell-proposals.md](docs/spell-proposals.md) | Propositions de sorts (partiellement dépassé, principes toujours valables) |
+| [docs/mana-and-spells.md](docs/mana-and-spells.md) | **Spécification en vigueur** : économie de mana, billes bleues, sorts aléatoires |
+| [docs/rewards.md](docs/rewards.md) | Catalogue de récompenses et prise de risque (deux hypothèses abandonnées, voir bandeau) |
+| [docs/spell-proposals.md](docs/spell-proposals.md) | Propositions de sorts (modèle de distribution non retenu, principes toujours valables) |
 
 ## Structure
 

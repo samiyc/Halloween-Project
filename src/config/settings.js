@@ -85,7 +85,7 @@ export const PLAYER = Object.freeze({
   size: 25,
   color: "#3FD35F",
   /** Pixels per 60 Hz frame, applied per axis then normalised on diagonals. */
-  speed: 3.2,
+  speed: 4,
   /** Distance from player centre to enemy centre for the melee to connect. */
   meleeRange: 55,
   /** Auto-attack period. Fires with no click and no key press. */

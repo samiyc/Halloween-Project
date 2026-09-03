@@ -1,23 +1,43 @@
 # Récompenses et prise de risque
 
+> **Statut : deux hypothèses de ce document ont été abandonnées.**
+>
+> 1. **La mêlée est conservée.** Ce document proposait de la supprimer ; à
+>    l'essai elle s'est révélée utile, précisément contre les ennemis rares aux
+>    symboles complexes. Elle a même pris un rôle économique central — voir
+>    [mana-and-spells.md](mana-and-spells.md) : elle est la seule action
+>    gratuite, donc le plancher qui empêche une partie de devenir injouable
+>    quand la jauge est vide. **La section « Ce qu'il faut retirer » plus bas
+>    ne doit pas être appliquée.**
+> 2. **Le contact avec un ennemi n'est pas mortel pour l'instant.** Il n'y a
+>    aucune collision joueur/ennemi. Tout ce qui, ci-dessous, repose sur
+>    « contact = défaite » est donc en attente, pas retenu.
+>
+> Ce qui reste pleinement valable : **les six règles de conception**, le
+> catalogue d'idées de récompenses, et la question ouverte sur la létalité du
+> contact — qui reste le levier de dernier recours si la mana s'avère trop
+> abondante.
+>
+> Les billes bleues de mana et l'orbe jaune de sort sont la **première
+> instanciation concrète** de ce catalogue. Le reste est un vivier d'idées pour
+> la suite.
+
 Document de conception. Rien ici n'est implémenté.
 
-Il remplace l'orientation « personnage de corps à corps » : la mêlée automatique
-donne trop peu de décisions au joueur, qui n'a qu'une chose à faire — rester
-collé au boss. Le personnage devient donc un **collecteur sous pression** : il
-va chercher des récompenses qui tombent, et le moindre contact avec un ennemi
+Il partait de l'idée que le personnage devienne un **collecteur sous pression** :
+il va chercher des récompenses qui tombent, et le moindre contact avec un ennemi
 fait perdre la partie.
 
 ---
 
 ## Ce que le pivot change
 
-| | Avant (mêlée) | Après (collecte) |
-| --- | --- | --- |
-| Rôle du personnage | Source de dégâts secondaire | Preneur de risques |
-| Décision par seconde | ~0 — on se colle et on attend | Une par récompense : y aller ou pas |
-| Contact ennemi | Sans effet | **Défaite immédiate** |
-| Attention demandée | Faible | Partagée entre les séquences et sa propre trajectoire |
+| | Avant | Proposé ici | **Retenu au final** |
+| --- | --- | --- | --- |
+| Rôle du personnage | Source de dégâts secondaire | Preneur de risques | **Les deux** : il collecte la mana *et* garde sa mêlée |
+| Décision par seconde | ~0 — on se colle et on attend | Une par récompense | Une par bille, plus l'arbitrage geste cher / mêlée gratuite |
+| Contact ennemi | Sans effet | Défaite immédiate | **Sans effet** — la collision est reportée |
+| Attention demandée | Faible | Partagée | Partagée |
 
 Le gain n'est pas d'ajouter du contenu, c'est de créer une **deuxième source
 d'attention en concurrence avec la première**. Lire les séquences demande de
@@ -318,9 +338,14 @@ dur à l'essai — elle se teste vite, sans rien changer d'autre.
 
 ## Coût d'implémentation
 
-### Ce qu'il faut retirer
+### ~~Ce qu'il faut retirer~~ — annulé
 
-Le corps à corps disparaît :
+> ⚠️ **Cette section n'est plus d'actualité.** La mêlée est conservée et a même
+> gagné un rôle structurant dans l'économie de mana. Rien de ce qui suit ne doit
+> être supprimé. Le passage est laissé pour mémoire, parce qu'il recense
+> précisément où vit le code de mêlée — ce qui reste utile pour le modifier.
+
+Le corps à corps disparaîtrait :
 
 - `src/game/combat.js` → `resolveMelee()` et `findMeleeTarget()`
 - `src/entities/player.js` → `meleeCooldownMs`, `meleeRange`, `meleeChargeRatio`, `isMeleeReady()`, `startMeleeCooldown()`, `distanceTo()` reste utile
@@ -329,9 +354,8 @@ Le corps à corps disparaît :
 - `src/config/settings.js` → `PLAYER.meleeRange`, `PLAYER.meleeCooldownMs`
 - Les tests associés dans `combat.test.js` et `entities.test.js`
 
-Conséquence à noter : **le boss ne sera plus attaquable qu'aux gestes.** C'est
-plus propre, mais il faudra revoir sa durée de vie — aujourd'hui le corps à
-corps grignote une partie de ses séquences.
+~~Conséquence à noter : le boss ne sera plus attaquable qu'aux gestes.~~
+Sans objet : la mêlée reste, donc le boss reste attaquable des deux façons.
 
 ### Ce qu'il faut créer
 
@@ -340,7 +364,8 @@ corps grignote une partie de ses séquences.
 - `src/entities/pickup.js` — chute, valeur, durée de vie.
 - `src/game/pickup-spawner.js` — calqué sur `Spawner`, avec des raretés
   pondérées.
-- `src/game/collection.js` — `collectPickups()` et `checkFatalContact()`, en
+- `src/game/collection.js` — `collectPickups()` (et `checkFatalContact()` le
+  jour où la collision sera tranchée), en
   fonctions pures comme le reste de `game/`.
 - `src/game/effects.js` — les effets à durée (`frozenMs`, multiplicateur,
   bouclier, célérité). ⚠️ **Doit passer par `clampDelta()`** : c'est l'erreur

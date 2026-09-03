@@ -1,0 +1,268 @@
+# Mana et sorts aléatoires
+
+Document de conception. **Rien ici n'est implémenté** — le jeu actuel lance les
+gestes gratuitement et sans limite.
+
+---
+
+## Le problème que ça résout
+
+Les gestes à la souris sont aujourd'hui gratuits et illimités. Le personnage n'a
+donc aucune raison d'exister : quoi qu'il fasse, la souris fait le travail. Tout
+déséquilibre clavier/souris vient de là.
+
+La mana renverse le rapport : **les gestes deviennent une ressource, et le
+personnage devient la source de cette ressource.** Le déplacement n'est plus un
+à-côté, c'est ce qui finance l'attaque.
+
+---
+
+## L'économie
+
+### Les coûts
+
+| Action | Coût | En billes |
+| --- | --- | --- |
+| Geste commun — `_` `\|` `V` `Ʌ` | **10 pts** | 2 |
+| Geste rare — `⚡` `@` | **30 pts** | 6 |
+| Mêlée automatique | **gratuite** | — |
+| Sort du bonus jaune | **gratuit** | — |
+
+Jauge : **max 100**, **démarre à 0**, régénération passive de **1 pt / 0,5 s**
+(soit 2 pts/s).
+
+Une bille bleue vaut **5 pts**. C'est le seul chiffre qui a bougé par rapport à
+l'intention initiale — « un sort coûte 2 billes » reste vrai, seule l'échelle
+change. La raison est arithmétique, et elle est détaillée juste en dessous.
+
+### Pourquoi 5 points la bille, et pas 1
+
+Avec 1 bille = 1 pt et un sort à 2 pts, la régénération passive rapporterait
+**2 pts/s**, contre **1,35 pt/s** pour une collecte parfaite de toutes les
+billes. Le passif aurait donc financé un sort par seconde **sans jamais bouger**,
+et rapporté davantage que le ramassage intégral.
+
+Les billes bleues auraient été décoratives — l'exact inverse du but. Et
+`max = 100` aurait représenté 50 sorts en réserve, donc une jauge qui ne se vide
+jamais.
+
+En portant la bille à 5 pts et le sort à 10, les proportions s'inversent :
+
+| Source | Revenu | Équivaut à |
+| --- | --- | --- |
+| Passif seul | 2 pts/s | 1 sort commun / 5 s, 1 rare / 15 s |
+| Collecte à 50 % | 5,38 pts/s | 1 sort commun / 1,9 s |
+| Collecte à 100 % | 6,75 pts/s | 1 sort commun / 1,5 s |
+
+La collecte rapporte **3,4× le passif**. Le passif ne sert plus qu'à éviter le
+blocage total, ce qui est son rôle légitime. Et 100 pts font 20 billes, soit
+10 sorts : une jauge qui se remplit *et* se vide visiblement.
+
+### Le geste raté doit coûter
+
+C'est le point le plus important de tout le document.
+
+Même à 50 % de collecte, on peut lancer un sort toutes les 1,9 s, alors que
+tracer un geste prend environ 1 s. **Si seuls les gestes réussis coûtaient, la
+mana ne contraindrait quasiment jamais** et tout ce système ne serait qu'un
+compteur décoratif.
+
+Ce qui produit l'effet recherché — « ça force le joueur à être précis » — c'est
+de payer aussi les gestes qui ne touchent rien. La distinction à implémenter :
+
+| Situation | Coût |
+| --- | --- |
+| Geste reconnu, touche une ou plusieurs cibles | **payé** |
+| Geste reconnu, ne correspond à aucune tête de séquence | **payé** |
+| Tracé non reconnu (trop court, `recognizeStroke` renvoie `null`) | **gratuit** |
+| Mana insuffisante | rien n'est lancé, rien n'est prélevé |
+
+Un tracé non reconnu ne lance aucun sort, donc ne prélève rien : sanctionner un
+mouvement de souris accidentel serait injuste. En revanche, un `Ʌ` propre tracé
+au mauvais moment est une décision, et elle se paie.
+
+### La mêlée est le plancher anti-blocage
+
+Jauge vide, ennemis qui descendent, plus rien à lancer : c'est une situation sans
+issue, et toute économie de ressource doit en prévoir une.
+
+Ici la sortie de secours est la mêlée, **gratuite**. Elle est lente (1,5 s) et
+mono-cible, donc elle ne remplace jamais les gestes, mais elle garantit qu'aucune
+partie ne devient injouable. C'est la vraie raison de la conserver — et la raison
+pour laquelle elle ne doit jamais coûter de mana.
+
+### L'arbitrage sur les ennemis rares
+
+Les gestes rares coûtent le triple. Face à un ennemi violet, deux routes :
+
+| Route | Coût |
+| --- | --- |
+| Tout aux gestes (≈ 2 communs + 2 rares) | ~80 pts de mana |
+| Aller au contact et laisser la mêlée faire | ~6 s de déplacement, gratuit |
+
+C'est exactement la décision recherchée : le personnage n'est plus un
+figurant, il est l'alternative économique au sort cher.
+
+---
+
+## Les billes bleues
+
+| Propriété | Valeur | Note |
+| --- | --- | --- |
+| Forme | cercle bleu | |
+| Diamètre | **12 px** | la moitié d'un cube gris (25 px) |
+| Vitesse de chute | **×1,5 celle des ennemis** → ~1,05 px/frame | traversée en 14,3 s |
+| Taux d'apparition | **×1,5 celui des ennemis** → ~1,35/s | ennemis : 0,9/s |
+| Valeur | 5 pts | |
+
+Le joueur se déplace à 240 px/s et traverse toute la largeur en 5 s, alors qu'une
+bille reste 14,3 s à l'écran : la plupart sont donc atteignables. Le jeu porte
+sur le **routage**, pas sur la vitesse pure.
+
+### ⚠️ Densité à l'écran
+
+À 1,35 bille/s pour 14,3 s de traversée, il y aurait **environ 19 billes
+simultanément** si aucune n'était ramassée, en plus des ennemis. C'est chargé.
+
+Si l'écran devient illisible à l'essai, le bon levier est **d'accélérer la
+chute** — elles restent moins longtemps, la densité baisse, le revenu total ne
+change pas. Baisser le taux d'apparition réduirait la densité *et* le revenu, ce
+qui n'est pas la même décision.
+
+---
+
+## Le bonus jaune et les sorts
+
+### Le principe
+
+Emprunté à Mario Kart et Tricky Towers : on ne choisit pas son sort, on reçoit ce
+que le hasard donne, et tout l'intérêt est de savoir **quand** le dépenser.
+
+| Propriété | Valeur |
+| --- | --- |
+| Forme | cercle jaune, ~18 px |
+| Fréquence | une chute toutes les **15-20 s** |
+| Effet du ramassage | débloque **un** sort tiré au hasard dans la liste |
+| Affichage | **coin supérieur gauche** de l'écran |
+| Touche | **`E`** ou **clic droit** |
+| Coût | **gratuit** — aucune mana, aucun cooldown |
+
+Aucun cooldown par sort : la rareté de l'orbe jaune assure déjà le rythme, et
+c'est la mana qui régule la souris. Deux systèmes de limitation suffisent, un
+troisième ne ferait qu'ajouter de l'interface.
+
+### Pourquoi les sorts sont gratuits
+
+L'orbe jaune est déjà la ressource, et elle est rare. Une double barrière
+rendrait le bonus injouable au moment précis où on le ramasse.
+
+L'argument décisif : la **Grande potion de mana** deviendrait absurde s'il fallait
+dépenser de la mana pour en gagner.
+
+### La liste
+
+| Sort | Effet | Durée | Signal visuel |
+| --- | --- | --- | --- |
+| **Frénésie** | vitesse d'attaque mêlée ×1,5 — cooldown 1500 → 1000 ms | 8 s | halo **orange** sur le héros |
+| **Givre** | ennemis dans un rayon autour du héros ralentis ×0,5 | 8 s | ennemis touchés en **bleu clair** |
+| **Célérité** | vitesse de déplacement ×1,5 — 4 → 6 px/frame | 8 s | halo **cyan** sur le héros |
+| **Grande potion** | +50 pts de mana | instantané | flash de la jauge |
+
+Rayon du givre : **200 px** proposé, à confirmer à l'essai. C'est presque quatre
+fois la portée de mêlée (55 px), donc un vrai outil de zone et pas un doublon.
+
+La potion à +50 représente la moitié de la jauge, soit 5 sorts communs. C'est
+volontairement fort : elle doit rester un tirage qu'on est content d'avoir.
+
+### ⚠️ Le vert est déjà pris
+
+Le héros est **déjà vert** (`PLAYER.color = "#3FD35F"`). Un buff de déplacement
+« vert » serait donc invisible — c'est le seul point de la proposition initiale
+qui ne peut pas fonctionner tel quel.
+
+Solution proposée : **le remplissage porte l'identité, le contour porte l'état.**
+
+```
+   remplissage vert  = c'est le héros, toujours
+   halo orange       = Frénésie active
+   halo cyan         = Célérité active
+   deux halos        = les deux, en anneaux concentriques
+```
+
+Ce découplage règle du même coup un problème que le changement de teinte ne sait
+pas exprimer : **deux buffs simultanés**. Les sorts durent 8 s et l'orbe tombe
+toutes les 15-20 s, donc le recouvrement est rare mais parfaitement possible —
+et une couleur de remplissage unique serait alors obligée d'en cacher un.
+
+### Questions ouvertes
+
+- **Un bonus tombe alors qu'un sort est déjà en réserve ?** Proposition : l'orbe
+  **n'est pas ramassée** et poursuit sa chute. Ça crée une pression à dépenser
+  avant de restocker, et évite d'écraser un sort qu'on gardait exprès.
+- **Clic droit** : impose un `preventDefault` sur `contextmenu`, et le bouton
+  droit ne doit pas démarrer un tracé dans `PointerTracker` (qui ne filtre pas le
+  bouton aujourd'hui). `E` est plus simple et fonctionne à l'identique sur AZERTY
+  et QWERTY (`KeyE` est à la même place physique).
+- **Le givre affecte-t-il le boss ?** Cohérent avec la règle actuelle : oui hors
+  phase de retraite, non pendant, où il est déjà invincible.
+
+---
+
+## ⚠️ Le risque principal du design
+
+**Sans collision joueur/ennemi, la collecte n'a aucun coût.**
+
+C'est la décision retenue pour l'instant, et elle est raisonnable pour valider
+l'économie avant d'ajouter du danger. Mais il faut en avoir conscience : la
+souris et le clavier occupent deux mains différentes, donc **on peut tracer tout
+en se déplaçant**. Rien n'est sacrifié pour aller chercher une bille.
+
+Le seul coût réel est l'**attention** — lire les séquences en haut de l'écran
+pendant qu'on pilote son personnage en bas — et le **routage**, puisqu'une bille
+ratée est perdue. C'est un vrai test d'habileté, mais ce n'est pas une prise de
+risque.
+
+Si la mana s'avère trop abondante à l'essai, les leviers sont, dans l'ordre :
+
+1. la valeur de la bille (5 pts),
+2. le coût des gestes (10 / 30 pts),
+3. la régénération passive (2 pts/s),
+4. **et seulement ensuite** la collision, traitée dans
+   [rewards.md](rewards.md), qui donnerait un coût réel au déplacement.
+
+---
+
+## Coût d'implémentation
+
+### À créer
+
+| Fichier | Rôle |
+| --- | --- |
+| `src/config/mana.js` | Coûts, valeur de la bille, régénération, max — comme `glyphs.js`, une seule source de vérité |
+| `src/entities/pickup.js` | Bille bleue et orbe jaune : chute, taille, collecte |
+| `src/game/mana.js` | La jauge : `spend()`, `gain()`, `regenerate(deltaMs)` |
+| `src/game/pickup-spawner.js` | Calqué sur `Spawner`, deux tables de taux |
+| `src/game/effects.js` | Les buffs à durée : `frozenMs`, `attackBoostMs`, `speedBoostMs` |
+| `src/config/spells.js` | Les 4 sorts, déclarés une fois avec `id`, `durationMs`, `apply(game)` |
+
+### À modifier
+
+- `src/game/game.js` — la jauge, les listes de billes, le sort en réserve.
+- `src/game/combat.js` — `resolveGesture()` doit renvoyer de quoi facturer, et
+  `Game.castGesture()` refuser si la mana est insuffisante.
+- `src/entities/player.js` — vitesse et cooldown de mêlée deviennent des valeurs
+  *effectives*, modulées par les buffs plutôt que lues directement dans `PLAYER`.
+- `src/entities/enemy.js` — un multiplicateur de vitesse pour le givre.
+- `src/render/hud.js` — la jauge de mana, le sort en réserve en haut à gauche.
+- `src/render/renderer.js` — billes, halos de buff, ennemis gelés.
+- `src/engine/keyboard.js` — rien à ajouter : `takePresses()` existe déjà pour ça.
+
+### ⚠️ Le piège à ne pas répéter
+
+Tout ce qui consomme un delta — régénération, durée des buffs, cadence de
+mêlée — **doit passer par `clampDelta()`** (`src/config/settings.js`).
+
+C'est l'erreur exacte déjà commise une fois sur le cooldown de mêlée : consommé
+brut, un delta de plusieurs secondes après un changement d'onglet remplissait la
+jauge et rechargeait tout d'un coup. Un test de régression existe, il faudra le
+même pour la mana.

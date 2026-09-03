@@ -1,5 +1,10 @@
 # Règles et réglages
 
+> Ce fichier décrit le jeu **tel qu'il est aujourd'hui**. La prochaine évolution
+> — les gestes payés en mana, les billes bleues à collecter et les sorts tirés au
+> hasard — est spécifiée dans [mana-and-spells.md](mana-and-spells.md) et n'est
+> pas encore implémentée.
+
 ## Le double focus
 
 C'est l'axe de conception du jeu, et il repose sur une opposition franche entre
@@ -107,7 +112,7 @@ aussi plus de temps.
 | Réglage | Valeur |
 | --- | --- |
 | `size` | 25 — même taille que les carrés gris |
-| `speed` | 3,2 px/frame, normalisée en diagonale |
+| `speed` | 4 px/frame (240 px/s), normalisée en diagonale |
 | `meleeRange` | 55 px, de centre à centre |
 | `meleeCooldownMs` | 1500 |
 

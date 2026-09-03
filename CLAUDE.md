@@ -143,18 +143,34 @@ cross and the game is easier than before. Left deliberately untouched; tune via
 
 ## Direction of travel
 
-A playable character exists: ZQSD movement plus an automatic melee. **The melee
-is slated for removal.** Play-testing found it gives the player almost no
-decisions — the dominant strategy is to park on the boss.
+The specification in force is **`docs/mana-and-spells.md`**. Nothing in it is
+implemented yet; the game still casts gestures for free.
 
-The agreed replacement is in `docs/rewards.md`: the character becomes a
-collector of falling pickups, and **contact with an enemy loses the run**, so
-movement carries real risk. That doc lists what to delete, what to add, and the
-open question (instant loss vs. lives) that should be settled before coding.
+**The melee is kept.** An earlier plan had it removed — `docs/rewards.md` even
+listed the code to delete. That was reversed after play-testing: it is genuinely
+useful against rare enemies with awkward glyphs, and it has since acquired a
+structural role. Both `docs/rewards.md` and `docs/spell-proposals.md` carry
+status banners saying so; do not act on their deletion lists.
 
-`docs/spell-proposals.md` predates that decision and is marked as partially
-superseded; its design principles and its "what I would avoid" section still
-hold. `Keyboard.takePresses()` remains the hook for any key-driven ability.
+The next feature is a **mana economy** that makes the character the source of
+the mouse's ammunition:
 
-Guiding constraint from both docs: a key must never remove a symbol for free, or
-the mouse — the core of the game — becomes decorative.
+- Gestures cost mana: 10 points for `_ | V Ʌ`, 30 for the rare `⚡ @`.
+- Blue orbs worth 5 points fall at 1.5x the enemy rate and speed; the player
+  collects them. Gauge maxes at 100 and starts empty, with 2 points/s passive.
+- **A recognised gesture that hits nothing still costs** — that is what makes
+  precision matter. An unrecognised stroke casts nothing and costs nothing.
+- **Melee stays free**, which makes it the floor that stops an empty gauge from
+  becoming an unwinnable state. Never charge mana for it.
+- A yellow orb every 15-20s grants one random spell, held in a single slot, cast
+  with `E` or right-click, free of mana and with no cooldown.
+
+Two design notes recorded there and worth not rediscovering: the player is
+already green, so a "green speed buff" would be invisible — buffs are drawn as
+halos, with fill reserved for identity; and there is **no player/enemy collision
+for now**, so collecting costs only attention, which is the main open risk.
+
+`Keyboard.takePresses()` remains the hook for any key-driven ability.
+
+Guiding constraint across every design doc: a key must never remove a symbol for
+free, or the mouse — the core of the game — becomes decorative.

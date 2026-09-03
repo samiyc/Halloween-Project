@@ -1,22 +1,30 @@
 # Propositions de sorts et de mécaniques
 
-> **Statut : partiellement dépassé.** Ce document suppose que le personnage
-> attaque au corps à corps. Cette orientation a été abandonnée à l'essai — elle
-> laissait trop peu de décisions au joueur, dont le seul réflexe était de rester
-> collé au boss. La direction retenue est dans
-> [rewards.md](rewards.md) : le personnage devient un collecteur, et le contact
-> avec un ennemi fait perdre.
+> **Statut : le modèle de distribution proposé ici n'a pas été retenu.**
 >
-> Ce qui reste valable ici : **les principes de conception** (§ « Les principes
-> qui rendent une proposition bonne »), la section **« Ce que je déconseille »**,
-> et les sorts qui ne dépendent pas de la mêlée — givre, onde de choc, vortex,
-> dash et les quatre runes. Plusieurs sont d'ailleurs repris comme récompenses
-> ramassables dans `rewards.md`, ce qui est probablement leur meilleure place :
-> obtenus par une prise de risque plutôt que par une touche disponible en
-> permanence.
+> Ce document distribuait les sorts sur des **touches fixes** (`AERF`, `Espace`,
+> `1234`) régulées par des **cooldowns**. Les deux ont été remplacés :
+>
+> | | Proposé ici | Retenu |
+> | --- | --- | --- |
+> | Accès aux sorts | une touche dédiée par sort | **un emplacement unique**, sort tiré au hasard sur ramassage d'une orbe jaune |
+> | Touches | `AERF` + `Espace` + `1234` | **une seule** — `E` ou clic droit |
+> | Régulation | un cooldown par sort | **la mana** pour les gestes, la rareté de l'orbe pour les sorts |
+>
+> La mêlée, que ce document proposait de contourner puis que `rewards.md`
+> proposait de supprimer, est **conservée** — elle est même devenue la seule
+> action gratuite, donc le plancher de l'économie.
+>
+> La spécification en vigueur est [mana-and-spells.md](mana-and-spells.md).
+>
+> Ce qui reste pleinement valable ici : **les principes de conception**
+> (§ « Les principes qui rendent une proposition bonne »), la section
+> **« Ce que je déconseille »**, et le catalogue lui-même — givre, onde de choc,
+> vortex, dash, runes. Ce sont autant de candidats pour le tirage aléatoire de
+> l'orbe jaune, qui est probablement leur meilleure place : obtenus par un
+> déplacement plutôt que disponibles en permanence sous les doigts.
 
-Document de conception, pas de spécification : rien ici n'est implémenté. Les
-touches `A` `E` `R` `F`, `Espace` et `1` `2` `3` `4` sont libres.
+Document de conception, pas de spécification : rien ici n'est implémenté.
 
 ---
 
@@ -54,11 +62,21 @@ personnage n'a aucune raison de bouger et tout le pilier « positionnement »
 s'effondre. **Chaque sort proposé ici a une portée**, et les plus forts ont la
 plus courte.
 
-### 4. Le cooldown est la seule ressource
+### 4. ~~Le cooldown est la seule ressource~~ — règle abandonnée
 
-Pas de mana, pas de barre à surveiller. Le HUD reste lisible et la main gauche
-n'a qu'une chose à gérer : quand relancer. Ajouter une ressource coûterait de
-l'interface pour un gain de profondeur discutable.
+> Cette règle disait : « pas de mana, pas de barre à surveiller ; ajouter une
+> ressource coûterait de l'interface pour un gain de profondeur discutable ».
+> **C'était faux, et l'erreur est instructive.**
+>
+> Le raisonnement ne regardait que le coût en interface, jamais ce qu'une
+> ressource permet. Or c'est précisément la mana qui résout le problème que ce
+> document n'arrivait pas à traiter : donner une raison d'exister au personnage.
+> Un cooldown se recharge tout seul, où qu'on soit — il ne récompense donc aucun
+> déplacement. Une ressource qu'on doit **aller ramasser**, si.
+>
+> La régulation retenue est une **jauge de mana unique** pour les gestes, et la
+> rareté de l'orbe jaune pour les sorts. Aucun cooldown par sort.
+> Voir [mana-and-spells.md](mana-and-spells.md).
 
 ---
 
