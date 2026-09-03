@@ -1,3 +1,4 @@
+import { BUFF_HALOS } from "../config/spells.js";
 import { FONTS, PALETTE } from "./palette.js";
 
 /**
@@ -31,7 +32,7 @@ export class Renderer {
    */
   drawEntity(entity) {
     const { ctx } = this;
-    ctx.fillStyle = entity.color;
+    ctx.fillStyle = entity.displayColor ?? entity.color;
     ctx.fillRect(entity.x, entity.y, entity.size, entity.size);
 
     const isRare = entity.variant === "rare";
@@ -81,6 +82,43 @@ export class Renderer {
 
     ctx.fillStyle = player.color;
     ctx.fillRect(player.x, player.y, player.size, player.size);
+  }
+
+  /**
+   * A falling pickup: blue mana orb or yellow spell orb.
+   * @param {import("../entities/pickup.js").Pickup} pickup
+   */
+  drawPickup(pickup) {
+    const { ctx } = this;
+    ctx.beginPath();
+    ctx.arc(pickup.x, pickup.y, pickup.radius, 0, Math.PI * 2);
+    ctx.fillStyle = pickup.color;
+    ctx.fill();
+  }
+
+  /**
+   * One ring per active buff, drawn outside the melee circle.
+   *
+   * Buffs are rings rather than a fill colour because the player is already
+   * green: a "green speed buff" would be invisible. Rings also stack, which a
+   * single fill cannot do.
+   *
+   * @param {import("../entities/player.js").Player} player
+   */
+  drawBuffHalos(player) {
+    const { ctx } = this;
+    let radius = player.meleeRange + 6;
+
+    for (const id of player.effects.activeIds()) {
+      const color = BUFF_HALOS[id];
+      if (!color) continue;
+      ctx.beginPath();
+      ctx.arc(player.centerX, player.centerY, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      radius += 6;
+    }
   }
 
   /**

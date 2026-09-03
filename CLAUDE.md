@@ -141,36 +141,53 @@ Field height went 600 → 900 at unchanged speeds, so enemies take 1.5x longer t
 cross and the game is easier than before. Left deliberately untouched; tune via
 `ENEMY.baseSpeed` or `SPAWN.chancePerFrame` in `src/config/settings.js`.
 
-## Direction of travel
+## The mana economy
 
-The specification in force is **`docs/mana-and-spells.md`**. Nothing in it is
-implemented yet; the game still casts gestures for free.
+Implemented. `docs/mana-and-spells.md` holds the reasoning and the measurements.
 
-**The melee is kept.** An earlier plan had it removed — `docs/rewards.md` even
-listed the code to delete. That was reversed after play-testing: it is genuinely
-useful against rare enemies with awkward glyphs, and it has since acquired a
-structural role. Both `docs/rewards.md` and `docs/spell-proposals.md` carry
-status banners saying so; do not act on their deletion lists.
+- Gestures cost mana: **8** points for `_ | V Ʌ`, **24** for the rare `⚡ @`.
+  Blue orbs are worth 5 and fall at 1.5x the enemy rate and speed. Gauge maxes at
+  100, starts empty, trickles 2 points/s.
+- **A recognised gesture that hits nothing still costs.** That is what makes
+  precision matter. An unrecognised stroke (`recognizeStroke` → `null`) casts
+  nothing and costs nothing. Insufficient mana takes nothing and sets
+  `manaWarningMs` so the HUD can flash.
+- **Melee is free**, which makes it the floor that stops an empty gauge from
+  becoming an unwinnable state. Never charge mana for it. An earlier plan had
+  the melee deleted; that was reversed. `docs/rewards.md` and
+  `docs/spell-proposals.md` carry banners saying so — do not act on their
+  deletion lists.
+- A yellow orb every 15-20s grants one random spell into a single slot, cast with
+  `E` or right-click, free and with no cooldown. While a spell is held, further
+  yellow orbs are **not** collected and keep falling.
 
-The next feature is a **mana economy** that makes the character the source of
-the mouse's ammunition:
+### Balance is measured, not guessed
 
-- Gestures cost mana: 10 points for `_ | V Ʌ`, 30 for the rare `⚡ @`.
-- Blue orbs worth 5 points fall at 1.5x the enemy rate and speed; the player
-  collects them. Gauge maxes at 100 and starts empty, with 2 points/s passive.
-- **A recognised gesture that hits nothing still costs** — that is what makes
-  precision matter. An unrecognised stroke casts nothing and costs nothing.
-- **Melee stays free**, which makes it the floor that stops an empty gauge from
-  becoming an unwinnable state. Never charge mana for it.
-- A yellow orb every 15-20s grants one random spell, held in a single slot, cast
-  with `E` or right-click, free of mana and with no cooldown.
+The costs above came out of a headless simulation, not intuition. Design said 10
+points ("a cast costs 2 orbs"); at 10 the game was winnable 4 times in 10,
+because the real collection ceiling is **57%** — capping income near 5.9 pts/s
+against a 9-18 pts/s demand. At 8 it is 8 in 10.
 
-Two design notes recorded there and worth not rediscovering: the player is
-already green, so a "green speed buff" would be invisible — buffs are drawn as
-halos, with fill reserved for identity; and there is **no player/enemy collision
-for now**, so collecting costs only attention, which is the main open risk.
+**Cost is a far stronger lever than drop rate**: −20% cost doubled the win rate
+while +33% orbs gained one point, since orbs you cannot reach are worth nothing.
+Tune `MANA.costCommon` first. If you change any tunable, re-run the simulation
+rather than reasoning about it — `tests/mana.test.js` guards the ratios but
+cannot tell you whether a run is still winnable.
 
-`Keyboard.takePresses()` remains the hook for any key-driven ability.
+### Traps already hit once
+
+- Everything consuming a delta goes through `clampDelta()`: regeneration, buff
+  durations, enemy slow, melee cadence. Each has a regression test pushing a
+  60-second frame.
+- The player is already green, so a "green speed buff" would be invisible. Buffs
+  are rings around the player; fill stays identity. Rings also stack, which a
+  fill colour cannot.
+- `PointerTracker` ignores non-left buttons, or a right-click spell cast would
+  also start a stroke that the release would charge for.
+- There is **no player/enemy collision**, so collecting costs only attention.
+  That is the main open design risk, recorded in `docs/rewards.md`.
+
+`Keyboard.takePresses()` is the hook for key-driven abilities.
 
 Guiding constraint across every design doc: a key must never remove a symbol for
 free, or the mouse — the core of the game — becomes decorative.

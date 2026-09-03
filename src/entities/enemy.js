@@ -1,5 +1,6 @@
 import { COMMON_SYMBOLS, RARE_SYMBOLS } from "../config/glyphs.js";
-import { ENEMY, RARE_ENEMY, toFrames } from "../config/settings.js";
+import { FROST_ENEMY_COLOR, SPELLS } from "../config/spells.js";
+import { ENEMY, RARE_ENEMY, clampDelta, toFrames } from "../config/settings.js";
 import { randomSequence, shuffled, systemRandom } from "../tools/random.js";
 import { Entity } from "./entity.js";
 
@@ -28,10 +29,31 @@ export class Enemy extends Entity {
 
     this.variant = variant;
     this.color = traits.color;
+    /** Milliseconds of Givre left on this enemy. */
+    this.slowRemainingMs = 0;
     this.speed =
       traits.baseSpeed +
       rng.range(0, traits.speedSpread) -
       sequence.length * traits.speedPerSymbol;
+  }
+
+  /** Tinted while the Givre holds it, so the effect is readable at a glance. */
+  get displayColor() {
+    return this.slowRemainingMs > 0 ? FROST_ENEMY_COLOR : this.color;
+  }
+
+  /** Speed after the Givre, in pixels per 60 Hz frame. */
+  get effectiveSpeed() {
+    return this.slowRemainingMs > 0 ? this.speed * SPELLS.frost.slowFactor : this.speed;
+  }
+
+  /**
+   * Refreshes rather than stacks, so several casts cannot freeze an enemy for
+   * a compounding duration.
+   * @param {number} durationMs
+   */
+  applySlow(durationMs) {
+    this.slowRemainingMs = Math.max(this.slowRemainingMs, durationMs);
   }
 
   /**
@@ -42,8 +64,9 @@ export class Enemy extends Entity {
    *   boss was absent; a plain flag removes that coupling.
    */
   update(deltaMs, { reversed = false } = {}) {
-    const frames = toFrames(deltaMs);
-    this.y += (reversed ? -this.speed : this.speed) * frames;
+    this.slowRemainingMs = Math.max(0, this.slowRemainingMs - clampDelta(deltaMs));
+    const step = this.effectiveSpeed * toFrames(deltaMs);
+    this.y += reversed ? -step : step;
   }
 
   /**

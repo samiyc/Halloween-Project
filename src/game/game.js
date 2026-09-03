@@ -1,9 +1,15 @@
-import { CANVAS } from "../config/settings.js";
+import { MANA, castCost } from "../config/mana.js";
+import { CANVAS, clampDelta } from "../config/settings.js";
+import { SPELL_IDS } from "../config/spells.js";
 import { Boss } from "../entities/boss.js";
 import { Player } from "../entities/player.js";
 import { systemRandom } from "../tools/random.js";
+import { collectPickups } from "./collection.js";
 import { resolveGesture, resolveMelee } from "./combat.js";
+import { ManaPool } from "./mana.js";
+import { PickupSpawner } from "./pickup-spawner.js";
 import { Spawner } from "./spawner.js";
+import { applySpell } from "./spellbook.js";
 
 export const GAME_STATUS = Object.freeze({
   running: "running",
@@ -16,6 +22,9 @@ export const END_REASON = Object.freeze({
   boss: "boss",
   enemy: "enemy",
 });
+
+/** How long the gauge flashes after a cast was refused for lack of mana. */
+const MANA_WARNING_MS = 600;
 
 /**
  * The orchestrator: owns the board, advances it, and decides when the game
@@ -38,15 +47,24 @@ export class Game {
   reset() {
     /** @type {import("../entities/enemy.js").Enemy[]} */
     this.enemies = [];
+    /** @type {import("../entities/pickup.js").Pickup[]} */
+    this.pickups = [];
     this.boss = new Boss({ fieldWidth: this.bounds.width, rng: this.rng });
     this.player = new Player({
       x: this.bounds.width / 2,
       y: this.bounds.height * 0.8,
     });
     this.spawner = new Spawner({ bounds: this.bounds, rng: this.rng });
+    this.pickupSpawner = new PickupSpawner({ bounds: this.bounds, rng: this.rng });
+    this.mana = new ManaPool();
+    /** @type {import("../config/spells.js").SpellId|null} The single spell slot. */
+    this.heldSpell = null;
     this.status = GAME_STATUS.running;
     this.endedBecause = null;
     this.enemiesDefeated = 0;
+    this.manaOrbsCollected = 0;
+    /** Counts down after a refused cast, so the HUD can flash the gauge. */
+    this.manaWarningMs = 0;
     /** Set on the frame a melee lands, so the renderer can flash the hit. */
     this.lastMeleeTarget = null;
   }
@@ -64,12 +82,14 @@ export class Game {
     if (!this.isRunning) return;
 
     this.lastMeleeTarget = null;
+    this.manaWarningMs = Math.max(0, this.manaWarningMs - clampDelta(deltaMs));
+    this.mana.regenerate(deltaMs);
+
     this.player.update(deltaMs, moveDirection, this.bounds);
     this.advanceBoard(deltaMs);
+    this.advancePickups(deltaMs);
     this.runMelee();
-
-    const spawned = this.spawner.tick(deltaMs);
-    if (spawned) this.enemies.push(spawned);
+    this.runSpawners(deltaMs);
 
     this.settleEndConditions();
   }
@@ -89,6 +109,29 @@ export class Game {
     this.enemies = this.enemies.filter((enemy) => enemy.y > -enemy.size * 2);
   }
 
+  /** @param {number} deltaMs */
+  advancePickups(deltaMs) {
+    for (const pickup of this.pickups) {
+      pickup.update(deltaMs);
+    }
+    const harvest = collectPickups(this.player, this.pickups, {
+      fieldHeight: this.bounds.height,
+      canTakeSpell: this.heldSpell === null,
+    });
+
+    this.pickups = harvest.remaining;
+    this.manaOrbsCollected += harvest.manaOrbs;
+    this.mana.gain(harvest.manaOrbs * MANA.orbValue);
+    if (harvest.tookSpell) this.heldSpell = this.rng.pick(SPELL_IDS);
+  }
+
+  /** @param {number} deltaMs */
+  runSpawners(deltaMs) {
+    const spawned = this.spawner.tick(deltaMs);
+    if (spawned) this.enemies.push(spawned);
+    this.pickups.push(...this.pickupSpawner.tick(deltaMs));
+  }
+
   runMelee() {
     const hit = resolveMelee(this.player, { enemies: this.enemies, boss: this.boss });
     if (!hit) return;
@@ -101,12 +144,22 @@ export class Game {
   }
 
   /**
-   * Applies a recognised gesture to the board.
+   * Applies a recognised gesture to the board, for a price.
+   *
+   * A recognised gesture is charged whether or not it hits anything: that is
+   * what makes precision matter. An unrecognised stroke casts nothing, so it
+   * costs nothing — punishing an accidental flick of the mouse would be unfair.
+   *
    * @param {import("../config/glyphs.js").GlyphId|null} glyphId
    * @returns {number} how many entities lost a symbol
    */
   castGesture(glyphId) {
     if (!this.isRunning || glyphId === null) return 0;
+
+    if (!this.mana.spend(castCost(glyphId))) {
+      this.manaWarningMs = MANA_WARNING_MS;
+      return 0;
+    }
 
     const { hits } = resolveGesture(glyphId, {
       enemies: this.enemies,
@@ -115,6 +168,18 @@ export class Game {
     this.removeDefeatedEnemies();
     this.boss.resolveClearedSequence();
     return hits;
+  }
+
+  /**
+   * Spends whatever the last yellow orb granted. Free — no mana, no cooldown.
+   * @returns {string|null} the spell that fired, or null if the slot was empty
+   */
+  castSpell() {
+    if (!this.isRunning || this.heldSpell === null) return null;
+
+    const spellId = this.heldSpell;
+    this.heldSpell = null;
+    return applySpell(spellId, this) ? spellId : null;
   }
 
   removeDefeatedEnemies() {

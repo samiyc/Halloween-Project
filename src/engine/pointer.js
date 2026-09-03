@@ -55,6 +55,10 @@ export class PointerTracker {
 
   /** @param {MouseEvent} event */
   begin(event) {
+    // Left button only. The right button casts the held spell, and without
+    // this filter it would also start a stroke that the following mouseup
+    // would then charge mana for.
+    if (event.button !== 0) return;
     if (!this.isEnabled()) return;
     this.isDrawing = true;
     this.path = [this.toCanvasPoint(event)];

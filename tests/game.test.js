@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { glyphForSymbol } from "../src/config/glyphs.js";
+import { MANA } from "../src/config/mana.js";
+import { MANA_ORB, SPELL_ORB } from "../src/config/pickups.js";
+import { SPELL_IDS } from "../src/config/spells.js";
 import { TIME } from "../src/config/settings.js";
 import { END_REASON, GAME_STATUS, Game } from "../src/game/game.js";
 import { Spawner } from "../src/game/spawner.js";
@@ -16,6 +19,18 @@ function seededGame(seed = 42) {
 }
 
 /**
+ * Tops the gauge up, then casts. Gestures cost mana now, so a test that wants
+ * to exercise combat rather than the economy has to pay for its casts.
+ * @param {Game} game
+ * @param {string} glyphId
+ * @returns {number}
+ */
+function fundedCast(game, glyphId) {
+  game.mana.value = MANA.max;
+  return game.castGesture(glyphId);
+}
+
+/**
  * Casts whatever gesture the entity is currently waiting for.
  * @param {Game} game
  * @param {{nextSymbol: string|null}} target
@@ -23,7 +38,7 @@ function seededGame(seed = 42) {
 function castNextSymbolOf(game, target) {
   const glyph = glyphForSymbol(target.nextSymbol);
   assert.ok(glyph, `no glyph for symbol ${JSON.stringify(target.nextSymbol)}`);
-  game.castGesture(glyph.id);
+  fundedCast(game, glyph.id);
 }
 
 describe("Game lifecycle", () => {
@@ -81,11 +96,11 @@ describe("Game scoring and gestures", () => {
     const enemy = game.enemies[0];
     enemy.sequence = "_|";
 
-    game.castGesture("horizontal");
+    fundedCast(game, "horizontal");
     assert.equal(game.enemiesDefeated, 0, "still one symbol to go");
     assert.equal(game.enemies.length, 1);
 
-    game.castGesture("vertical");
+    fundedCast(game, "vertical");
     assert.equal(game.enemiesDefeated, 1);
     assert.deepEqual(game.enemies, []);
   });
@@ -95,7 +110,7 @@ describe("Game scoring and gestures", () => {
     game.enemies = [game.spawner.create(), game.spawner.create()];
     for (const enemy of game.enemies) enemy.sequence = "V";
 
-    assert.equal(game.castGesture("chevronDown"), 2);
+    assert.equal(fundedCast(game, "chevronDown"), 2);
     assert.equal(game.enemiesDefeated, 2);
   });
 
@@ -304,5 +319,158 @@ describe("Spawner", () => {
       assert.ok(enemy.x >= 0);
       assert.ok(enemy.x + enemy.size <= BOUNDS.width);
     }
+  });
+});
+
+describe("Game mana economy", () => {
+  it("charges a gesture and refuses one it cannot pay for", () => {
+    const game = seededGame();
+    game.enemies = [game.spawner.create()];
+    game.enemies[0].sequence = "__";
+    game.mana.value = MANA.costCommon;
+
+    assert.equal(game.castGesture("horizontal"), 1);
+    assert.equal(game.mana.value, 0);
+
+    assert.equal(game.castGesture("horizontal"), 0, "no mana, no cast");
+    assert.equal(game.enemies[0].sequence, "_", "and the symbol must survive");
+    assert.equal(game.mana.value, 0, "a refused cast must not nibble the gauge");
+  });
+
+  it("charges a recognised gesture even when it hits nothing", () => {
+    // This is what makes precision matter. Without it, mana never constrains
+    // anything at a realistic collection rate.
+    const game = seededGame();
+    game.enemies = [game.spawner.create()];
+    game.enemies[0].sequence = "V";
+    game.boss.sequence = "V";
+    game.mana.value = MANA.max;
+
+    assert.equal(game.castGesture("horizontal"), 0, "nothing was waiting on _");
+    assert.equal(game.mana.value, MANA.max - MANA.costCommon, "but it still costs");
+  });
+
+  it("charges nothing for an unrecognised stroke", () => {
+    const game = seededGame();
+    game.mana.value = 30;
+    assert.equal(game.castGesture(null), 0);
+    assert.equal(game.mana.value, 30, "an accidental flick must be free");
+  });
+
+  it("charges triple for a rare glyph", () => {
+    const game = seededGame();
+    game.mana.value = MANA.max;
+    game.castGesture("spiral");
+    assert.equal(game.mana.value, MANA.max - MANA.costRare);
+  });
+
+  it("cannot afford a rare glyph on a gauge that pays for a common one", () => {
+    // The arbitrage the design is built on: when mana is short, walk over and
+    // let the free melee handle the rare enemy.
+    const game = seededGame();
+    game.mana.value = MANA.costCommon;
+    assert.equal(game.castGesture("bolt"), 0);
+    assert.equal(game.mana.value, MANA.costCommon);
+  });
+
+  it("keeps the melee free, so an empty gauge is never a dead end", () => {
+    const game = seededGame();
+    game.mana.value = 0;
+    const target = game.spawner.create();
+    target.sequence = "@@";
+    target.x = game.player.x;
+    target.y = game.player.y;
+    game.enemies = [target];
+    game.player.meleeCooldownMs = 0;
+
+    game.update(FRAME);
+
+    assert.equal(target.sequence, "@", "melee must work with no mana at all");
+  });
+
+  it("flags a refused cast so the HUD can flash, then clears it", () => {
+    const game = seededGame();
+    game.mana.value = 0;
+    game.castGesture("horizontal");
+    assert.ok(game.manaWarningMs > 0);
+
+    for (let frame = 0; frame < 60; frame += 1) game.update(FRAME);
+    assert.equal(game.manaWarningMs, 0);
+  });
+
+  it("regenerates passively as the game runs", () => {
+    const game = seededGame();
+    assert.equal(game.mana.value, 0, "starts empty");
+    for (let frame = 0; frame < 60; frame += 1) game.update(FRAME);
+    assert.ok(game.mana.value >= MANA.regenPerSecond - 0.1);
+  });
+
+  it("credits the gauge when the player walks over a mana orb", () => {
+    const game = seededGame();
+    const orb = game.pickupSpawner.create(MANA_ORB);
+    orb.x = game.player.centerX;
+    orb.y = game.player.centerY;
+    game.pickups = [orb];
+    const before = game.mana.value;
+
+    game.update(FRAME);
+
+    assert.equal(game.manaOrbsCollected, 1);
+    assert.ok(game.mana.value >= before + MANA.orbValue);
+    assert.deepEqual(game.pickups, []);
+  });
+
+  it("grants a random spell from a yellow orb, and only while the slot is free", () => {
+    const game = seededGame();
+    const drop = () => {
+      const orb = game.pickupSpawner.create(SPELL_ORB);
+      orb.x = game.player.centerX;
+      orb.y = game.player.centerY;
+      game.pickups = [orb];
+      game.update(FRAME);
+    };
+
+    drop();
+    assert.ok(SPELL_IDS.includes(game.heldSpell), `got ${game.heldSpell}`);
+
+    const held = game.heldSpell;
+    drop();
+    assert.equal(game.heldSpell, held, "a second orb must not overwrite the slot");
+    assert.equal(game.pickups.length, 1, "it keeps falling instead");
+  });
+
+  it("resets the whole economy", () => {
+    const game = seededGame();
+    game.mana.value = 80;
+    game.heldSpell = "haste";
+    game.manaOrbsCollected = 9;
+    game.pickups = [game.pickupSpawner.create(MANA_ORB)];
+
+    game.reset();
+
+    assert.equal(game.mana.value, MANA.start);
+    assert.equal(game.heldSpell, null);
+    assert.equal(game.manaOrbsCollected, 0);
+    assert.deepEqual(game.pickups, []);
+  });
+
+  it("stays deterministic with pickups in play", () => {
+    const a = seededGame(21);
+    const b = seededGame(21);
+    for (let frame = 0; frame < 900; frame += 1) {
+      a.update(FRAME, { x: 1, y: -1 });
+      b.update(FRAME, { x: 1, y: -1 });
+    }
+    assert.equal(a.pickups.length, b.pickups.length);
+    assert.equal(a.mana.value.toFixed(6), b.mana.value.toFixed(6));
+    assert.equal(a.heldSpell, b.heldSpell);
+  });
+
+  it("does not let pickups pile up forever", () => {
+    // They are filtered on escape; without that the array grows for the whole
+    // run and every frame walks a longer list.
+    const game = seededGame(3);
+    for (let frame = 0; frame < 60 * 90; frame += 1) game.update(FRAME);
+    assert.ok(game.pickups.length < 40, `${game.pickups.length} pickups on screen`);
   });
 });

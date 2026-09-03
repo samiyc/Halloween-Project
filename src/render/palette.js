@@ -18,6 +18,11 @@ export const PALETTE = Object.freeze({
   lose: "#FF8B6B",
   cooldownTrack: "rgba(255, 255, 255, 0.22)",
   cooldownFill: "#3FD35F",
+  manaTrack: "rgba(255, 255, 255, 0.18)",
+  manaFill: "#4FA8FF",
+  manaWarning: "#FF6B6B",
+  slotEmpty: "rgba(255, 255, 255, 0.30)",
+  slotReady: "#FFD447",
 });
 
 export const FONTS = Object.freeze({

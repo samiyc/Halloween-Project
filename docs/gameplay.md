@@ -1,9 +1,8 @@
 # Règles et réglages
 
-> Ce fichier décrit le jeu **tel qu'il est aujourd'hui**. La prochaine évolution
-> — les gestes payés en mana, les billes bleues à collecter et les sorts tirés au
-> hasard — est spécifiée dans [mana-and-spells.md](mana-and-spells.md) et n'est
-> pas encore implémentée.
+> Ce fichier décrit le jeu **tel qu'il est aujourd'hui**. L'économie de mana, les
+> billes bleues et les sorts aléatoires sont détaillés dans
+> [mana-and-spells.md](mana-and-spells.md), avec les mesures d'équilibrage.
 
 ## Le double focus
 
@@ -16,6 +15,11 @@ les deux moyens d'attaquer :
 | Cibles | **Toutes** les entités à la fois | **Une seule**, la plus proche |
 | Contrainte | Doit correspondre au symbole en tête | Ignore le symbole, retire ce qui vient |
 | Rythme | À la volée | Automatique, toutes les 1,5 s |
+| Coût | **8 pts de mana** (24 pour ⚡ et @) | **gratuite** |
+
+Et c'est la mana qui referme la boucle : le personnage la ramasse sous forme de
+billes bleues, la souris la dépense. Il ne se contente donc plus de compléter les
+gestes, il les finance.
 
 Un geste horizontal retire un `_` à *tous* les ennemis qui en attendent un, et
 au boss. La mêlée retire *un* symbole à *une* cible, quel qu'il soit.
@@ -114,7 +118,18 @@ aussi plus de temps.
 | `size` | 25 — même taille que les carrés gris |
 | `speed` | 4 px/frame (240 px/s), normalisée en diagonale |
 | `meleeRange` | 55 px, de centre à centre |
-| `meleeCooldownMs` | 1500 |
+| `meleeCooldownMs` | 1500 (1000 sous Frénésie) |
+
+### Mana et ramassages
+
+| Réglage | Valeur |
+| --- | --- |
+| `MANA.max` / `start` | 100 / 0 |
+| `MANA.regenPerSecond` | 2 |
+| `MANA.orbValue` | 5 |
+| `MANA.costCommon` / `costRare` | 8 / 24 — **le levier de difficulté principal** |
+| `MANA_ORB` | 12 px, 1,05 px/frame, 0,0225/frame (≈1,35/s) |
+| `SPELL_ORB` | 18 px, 0,7 px/frame, une chute toutes les 15-20 s |
 
 ### Apparition
 

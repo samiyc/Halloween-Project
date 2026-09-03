@@ -1,15 +1,16 @@
 # Mana et sorts aléatoires
 
-Document de conception. **Rien ici n'est implémenté** — le jeu actuel lance les
-gestes gratuitement et sans limite.
+**Implémenté.** Les chiffres ci-dessous sont ceux du code, et deux d'entre eux
+ont changé par rapport à la conception initiale après mesure — voir
+« Ce que la simulation a corrigé ».
 
 ---
 
 ## Le problème que ça résout
 
-Les gestes à la souris sont aujourd'hui gratuits et illimités. Le personnage n'a
-donc aucune raison d'exister : quoi qu'il fasse, la souris fait le travail. Tout
-déséquilibre clavier/souris vient de là.
+Les gestes à la souris étaient gratuits et illimités. Le personnage n'avait donc
+aucune raison d'exister : quoi qu'il fasse, la souris faisait le travail. Tout le
+déséquilibre clavier/souris venait de là.
 
 La mana renverse le rapport : **les gestes deviennent une ressource, et le
 personnage devient la source de cette ressource.** Le déplacement n'est plus un
@@ -23,52 +24,81 @@ personnage devient la source de cette ressource.** Le déplacement n'est plus un
 
 | Action | Coût | En billes |
 | --- | --- | --- |
-| Geste commun — `_` `\|` `V` `Ʌ` | **10 pts** | 2 |
-| Geste rare — `⚡` `@` | **30 pts** | 6 |
+| Geste commun — `_` `\|` `V` `Ʌ` | **8 pts** | 1,6 |
+| Geste rare — `⚡` `@` | **24 pts** | 4,8 |
 | Mêlée automatique | **gratuite** | — |
 | Sort du bonus jaune | **gratuit** | — |
 
 Jauge : **max 100**, **démarre à 0**, régénération passive de **1 pt / 0,5 s**
-(soit 2 pts/s).
+(soit 2 pts/s). Une bille bleue vaut **5 pts**.
 
-Une bille bleue vaut **5 pts**. C'est le seul chiffre qui a bougé par rapport à
-l'intention initiale — « un sort coûte 2 billes » reste vrai, seule l'échelle
-change. La raison est arithmétique, et elle est détaillée juste en dessous.
+### Ce que la simulation a corrigé
 
-### Pourquoi 5 points la bille, et pas 1
+Deux valeurs ont changé après mesure. Les deux erreurs allaient dans des sens
+opposés, et aucune n'était visible sans faire tourner le jeu.
 
-Avec 1 bille = 1 pt et un sort à 2 pts, la régénération passive rapporterait
-**2 pts/s**, contre **1,35 pt/s** pour une collecte parfaite de toutes les
-billes. Le passif aurait donc financé un sort par seconde **sans jamais bouger**,
-et rapporté davantage que le ramassage intégral.
+**La bille est passée de 1 à 5 points.** Avec 1 bille = 1 pt et un sort à 2 pts,
+la régénération passive rapportait 2 pts/s contre **1,35 pt/s** pour une collecte
+*intégrale*. Rester immobile aurait rapporté plus qu'un jeu parfait, et les
+billes auraient été décoratives — l'exact inverse du but.
 
-Les billes bleues auraient été décoratives — l'exact inverse du but. Et
-`max = 100` aurait représenté 50 sorts en réserve, donc une jauge qui ne se vide
-jamais.
+**Le sort est passé de 10 à 8 points.** Une partie complète a été rejouée sans
+navigateur, avec un bot qui ramasse et lance au mieux. Le verdict :
 
-En portant la bille à 5 pts et le sort à 10, les proportions s'inversent :
+| Grandeur | Mesure |
+| --- | --- |
+| Plafond de collecte réel (bot qui ne fait *que* ramasser) | **57 %** des billes |
+| Offre maximale correspondante | **5,92 pts/s** (3,92 collecte + 2 passif) |
+| Demande pour suivre le rythme des ennemis | **9 à 18 pts/s** |
+
+L'offre plafonne à moins des deux tiers de la demande. Le « 100 % de collecte »
+de la conception initiale n'existe pas : on ne peut pas être partout, et les
+billes tombent plus vite que le joueur ne traverse l'écran. À 10 pts le sort, une
+partie n'était gagnée que **4 fois sur 10** ; à 8 pts, **8 fois sur 10**.
+
+Conséquence : « un sort coûte 2 billes » était le bon instinct mais ne tient pas
+au chiffre près. Un sort coûte 1,6 bille.
+
+### Le coût est un levier bien plus fort que le taux de chute
+
+Table de calibration mesurée, 10 parties par ligne :
+
+| Configuration | Victoires |
+| --- | --- |
+| coût 10/30, billes ×1,5 | 4/10 |
+| coût 10/30, billes ×2 | 5/10 |
+| coût 10/30, billes ×2,5 | 8/10 |
+| **coût 8/24, billes ×1,5** — retenu | **8/10** |
+| coût 6/18, billes ×1,5 | 10/10 |
+
+Baisser le coût de 20 % double le taux de victoire ; augmenter le nombre de
+billes de 33 % ne fait gagner qu'un point. La raison est le plafond de 57 % :
+**des billes qu'on ne peut pas atteindre ne valent rien.** Pour régler la
+difficulté, toucher `MANA.costCommon` d'abord, `MANA_ORB.chancePerFrame`
+seulement si l'écran doit paraître plus ou moins chargé.
+
+Pour mémoire, les proportions qui restent vraies :
 
 | Source | Revenu | Équivaut à |
 | --- | --- | --- |
-| Passif seul | 2 pts/s | 1 sort commun / 5 s, 1 rare / 15 s |
-| Collecte à 50 % | 5,38 pts/s | 1 sort commun / 1,9 s |
-| Collecte à 100 % | 6,75 pts/s | 1 sort commun / 1,5 s |
+| Passif seul | 2 pts/s | 1 sort commun / 4 s |
+| Collecte réaliste (57 %) | 5,92 pts/s | 1 sort commun / 1,4 s |
 
-La collecte rapporte **3,4× le passif**. Le passif ne sert plus qu'à éviter le
-blocage total, ce qui est son rôle légitime. Et 100 pts font 20 billes, soit
-10 sorts : une jauge qui se remplit *et* se vide visiblement.
+La collecte rapporte environ **2× le passif**, qui ne sert donc qu'à éviter le
+blocage total. Et 100 pts font 12,5 sorts : une jauge qui se remplit *et* se
+vide visiblement.
 
 ### Le geste raté doit coûter
 
 C'est le point le plus important de tout le document.
 
-Même à 50 % de collecte, on peut lancer un sort toutes les 1,9 s, alors que
-tracer un geste prend environ 1 s. **Si seuls les gestes réussis coûtaient, la
+Au plafond de collecte, on peut lancer un sort toutes les 1,4 s, alors que
+tracer un geste en prend environ 1. **Si seuls les gestes réussis coûtaient, la
 mana ne contraindrait quasiment jamais** et tout ce système ne serait qu'un
 compteur décoratif.
 
 Ce qui produit l'effet recherché — « ça force le joueur à être précis » — c'est
-de payer aussi les gestes qui ne touchent rien. La distinction à implémenter :
+de payer aussi les gestes qui ne touchent rien. La distinction retenue :
 
 | Situation | Coût |
 | --- | --- |
@@ -97,8 +127,8 @@ Les gestes rares coûtent le triple. Face à un ennemi violet, deux routes :
 
 | Route | Coût |
 | --- | --- |
-| Tout aux gestes (≈ 2 communs + 2 rares) | ~80 pts de mana |
-| Aller au contact et laisser la mêlée faire | ~6 s de déplacement, gratuit |
+| Tout aux gestes (≈ 2 communs + 2 rares) | **64 pts** de mana, soit 13 billes |
+| Aller au contact et laisser la mêlée faire | ~6 s de déplacement, **gratuit** |
 
 C'est exactement la décision recherchée : le personnage n'est plus un
 figurant, il est l'alternative économique au sort cher.
@@ -116,8 +146,10 @@ figurant, il est l'alternative économique au sort cher.
 | Valeur | 5 pts | |
 
 Le joueur se déplace à 240 px/s et traverse toute la largeur en 5 s, alors qu'une
-bille reste 14,3 s à l'écran : la plupart sont donc atteignables. Le jeu porte
-sur le **routage**, pas sur la vitesse pure.
+bille reste 14,3 s à l'écran. On pourrait croire que presque toutes sont
+atteignables : la mesure dit **57 %** pour un bot qui ne fait que ramasser, parce
+qu'on ne peut pas être à deux endroits et que les billes tombent en continu. Le
+jeu porte sur le **routage**, pas sur la vitesse pure.
 
 ### ⚠️ Densité à l'écran
 
@@ -232,20 +264,23 @@ Si la mana s'avère trop abondante à l'essai, les leviers sont, dans l'ordre :
 
 ---
 
-## Coût d'implémentation
+## Où vit le code
 
-### À créer
+### Créé
 
 | Fichier | Rôle |
 | --- | --- |
-| `src/config/mana.js` | Coûts, valeur de la bille, régénération, max — comme `glyphs.js`, une seule source de vérité |
-| `src/entities/pickup.js` | Bille bleue et orbe jaune : chute, taille, collecte |
+| `src/config/mana.js` | Coûts, valeur de la bille, régénération, max — une seule source de vérité, et `castCost()` lit la rareté dans le registre des glyphes |
+| `src/config/pickups.js` | Taille, couleur, vitesse et taux des deux orbes |
+| `src/config/spells.js` | Les 4 sorts en données pures, plus les couleurs de halo |
+| `src/entities/pickup.js` | Bille bleue et orbe jaune : chute, collecte |
 | `src/game/mana.js` | La jauge : `spend()`, `gain()`, `regenerate(deltaMs)` |
-| `src/game/pickup-spawner.js` | Calqué sur `Spawner`, deux tables de taux |
-| `src/game/effects.js` | Les buffs à durée : `frozenMs`, `attackBoostMs`, `speedBoostMs` |
-| `src/config/spells.js` | Les 4 sorts, déclarés une fois avec `id`, `durationMs`, `apply(game)` |
+| `src/game/collection.js` | `collectPickups()`, en fonction pure |
+| `src/game/pickup-spawner.js` | Deux rythmes : probabiliste pour les billes, minuterie pour les orbes |
+| `src/game/effects.js` | Les buffs à durée |
+| `src/game/spellbook.js` | Ce que chaque sort fait — table de handlers, pas de `switch` |
 
-### À modifier
+### Modifié
 
 - `src/game/game.js` — la jauge, les listes de billes, le sort en réserve.
 - `src/game/combat.js` — `resolveGesture()` doit renvoyer de quoi facturer, et
@@ -255,14 +290,16 @@ Si la mana s'avère trop abondante à l'essai, les leviers sont, dans l'ordre :
 - `src/entities/enemy.js` — un multiplicateur de vitesse pour le givre.
 - `src/render/hud.js` — la jauge de mana, le sort en réserve en haut à gauche.
 - `src/render/renderer.js` — billes, halos de buff, ennemis gelés.
-- `src/engine/keyboard.js` — rien à ajouter : `takePresses()` existe déjà pour ça.
+- `src/engine/keyboard.js` — rien à ajouter : `takePresses()` existait déjà.
+- `src/engine/pointer.js` — ignore les boutons autres que le gauche, sinon le
+  clic droit démarrerait un tracé que le relâchement ferait payer.
 
-### ⚠️ Le piège à ne pas répéter
+### ⚠️ Le piège, évité
 
-Tout ce qui consomme un delta — régénération, durée des buffs, cadence de
-mêlée — **doit passer par `clampDelta()`** (`src/config/settings.js`).
+Tout ce qui consomme un delta — régénération, durée des buffs, ralentissement des
+ennemis, cadence de mêlée — **passe par `clampDelta()`** (`src/config/settings.js`).
 
-C'est l'erreur exacte déjà commise une fois sur le cooldown de mêlée : consommé
-brut, un delta de plusieurs secondes après un changement d'onglet remplissait la
-jauge et rechargeait tout d'un coup. Un test de régression existe, il faudra le
-même pour la mana.
+C'est l'erreur déjà commise une fois sur le cooldown de mêlée : consommé brut, un
+delta de plusieurs secondes après un changement d'onglet remplissait la jauge et
+rechargeait tout d'un coup. Chacun des quatre points a désormais son test de
+régression, qui pousse une frame de 60 s et vérifie que rien ne saute.

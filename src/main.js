@@ -46,6 +46,21 @@ class App {
     this.loop = new GameLoop((deltaMs) => this.frame(deltaMs));
     this.gameOverElapsedMs = 0;
     this.restartArmed = false;
+    this.bindSpellCasting();
+  }
+
+  /**
+   * The held spell fires on E or on a right click.
+   *
+   * The context menu has to be suppressed or the right click opens it instead,
+   * and PointerTracker ignores non-left buttons so the same click cannot also
+   * start a gesture.
+   */
+  bindSpellCasting() {
+    this.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+    this.canvas.addEventListener("mousedown", (event) => {
+      if (event.button === 2) this.game.castSpell();
+    });
   }
 
   start() {
@@ -54,7 +69,12 @@ class App {
 
   /** @param {number} deltaMs */
   frame(deltaMs) {
+    // Drained every frame, running or not, so the queue cannot grow unbounded
+    // while the game-over screen is up.
+    const presses = this.keyboard.takePresses();
+
     if (this.game.isRunning) {
+      if (presses.includes("KeyE")) this.game.castSpell();
       this.game.update(deltaMs, this.keyboard.moveDirection());
     } else {
       this.gameOverElapsedMs += deltaMs;
@@ -70,7 +90,11 @@ class App {
     for (const enemy of game.enemies) {
       renderer.drawEntity(enemy);
     }
+    for (const pickup of game.pickups) {
+      renderer.drawPickup(pickup);
+    }
     renderer.drawMeleeFlash(game.lastMeleeTarget);
+    renderer.drawBuffHalos(game.player);
     renderer.drawPlayer(game.player, game.lastMeleeTarget !== null);
     renderer.drawStroke(this.pointer.currentPath());
     this.hud.draw(game);
@@ -92,7 +116,13 @@ class App {
     if (this.gameOverElapsedMs < RESTART_DELAY_MS) return;
 
     this.restartArmed = true;
-    this.canvas.addEventListener("mousedown", () => this.restart(), { once: true });
+    // Left button only: a right click is a spell cast, not a restart.
+    const onPress = (event) => {
+      if (event.button !== 0) return;
+      this.canvas.removeEventListener("mousedown", onPress);
+      this.restart();
+    };
+    this.canvas.addEventListener("mousedown", onPress);
   }
 
   /**

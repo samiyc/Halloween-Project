@@ -1,4 +1,6 @@
 import { ALL_GLYPHS } from "../config/glyphs.js";
+import { MANA } from "../config/mana.js";
+import { SPELLS } from "../config/spells.js";
 import { END_REASON, GAME_STATUS } from "../game/game.js";
 import { FONTS, PALETTE } from "./palette.js";
 
@@ -31,8 +33,65 @@ export class Hud {
   /** @param {import("../game/game.js").Game} game */
   draw(game) {
     this.drawScore(game.enemiesDefeated);
+    this.drawManaGauge(game);
     this.drawMeleeCooldown(game.player);
+    this.drawSpellSlot(game.heldSpell);
     this.drawGlyphLegend();
+  }
+
+  /**
+   * The mana gauge, with the cost of a common gesture marked on it so the
+   * player can see at a glance whether the next stroke is affordable.
+   * @param {import("../game/game.js").Game} game
+   */
+  drawManaGauge(game) {
+    const { ctx } = this;
+    const width = 220;
+    const height = 12;
+    const x = 16;
+    const y = this.height - 76;
+
+    ctx.fillStyle = PALETTE.manaTrack;
+    ctx.fillRect(x, y, width, height);
+    ctx.fillStyle = game.manaWarningMs > 0 ? PALETTE.manaWarning : PALETTE.manaFill;
+    ctx.fillRect(x, y, width * game.mana.ratio, height);
+
+    // A tick at the price of one common gesture.
+    const tick = x + (width * MANA.costCommon) / MANA.max;
+    ctx.fillStyle = PALETTE.text;
+    ctx.fillRect(tick, y, 1, height);
+
+    ctx.font = FONTS.label;
+    ctx.textAlign = "left";
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.fillText(`Mana ${Math.floor(game.mana.value)}/${MANA.max}`, x + width + 10, y + height - 1);
+  }
+
+  /**
+   * The single spell slot, top left, as the design asks.
+   * @param {string|null} heldSpell
+   */
+  drawSpellSlot(heldSpell) {
+    const { ctx } = this;
+    const spell = heldSpell ? SPELLS[heldSpell] : null;
+
+    ctx.strokeStyle = spell ? PALETTE.slotReady : PALETTE.slotEmpty;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(16, 16, 190, 44);
+
+    ctx.textAlign = "left";
+    if (!spell) {
+      ctx.fillStyle = PALETTE.textMuted;
+      ctx.font = FONTS.label;
+      ctx.fillText("Aucun sort", 28, 43);
+      return;
+    }
+    ctx.fillStyle = PALETTE.slotReady;
+    ctx.font = FONTS.hud;
+    ctx.fillText(spell.name, 28, 38);
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = FONTS.label;
+    ctx.fillText(`${spell.hint} — touche E`, 28, 54);
   }
 
   /** @param {number} defeated */

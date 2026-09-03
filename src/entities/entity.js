@@ -29,6 +29,15 @@ export class Entity {
     return this.x + this.size / 2;
   }
 
+  /**
+   * The colour to draw with. Subclasses override it to express state — a
+   * slowed enemy, for instance — so the renderer never has to know about
+   * gameplay rules.
+   */
+  get displayColor() {
+    return this.color;
+  }
+
   get centerY() {
     return this.y + this.size / 2;
   }

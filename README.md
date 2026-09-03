@@ -51,12 +51,14 @@ aucune dépendance runtime).
 | Souris (glisser) | Lance un geste. **Aucune limite de portée** : touche tout l'écran |
 | `Z` `Q` `S` `D` | Déplace le personnage vert (fonctionne aussi en `W` `A` `S` `D` sur QWERTY, et aux flèches) |
 | — | La mêlée se déclenche **seule** toutes les 1,5 s sur la cible la plus proche dans le cercle |
-| Clic | Recommence la partie une fois l'écran de fin affiché |
+| `E` ou **clic droit** | Lance le sort en réserve, affiché en haut à gauche |
+| Clic gauche | Recommence la partie une fois l'écran de fin affiché |
 
-À venir, non implémenté ([mana-and-spells.md](docs/mana-and-spells.md)) : les
-gestes coûteront de la mana, ramassée sous forme de billes bleues par le
-personnage, et une touche unique (**`E`** ou clic droit) lancera le sort tiré au
-hasard par la dernière orbe jaune ramassée.
+Les gestes coûtent de la **mana** : 8 points, 24 pour l'éclair et la spirale. On
+la ramasse en **billes bleues** avec le personnage ; la jauge démarre vide. Un
+geste reconnu est facturé **même s'il ne touche rien**, ce qui récompense la
+précision. La mêlée, elle, reste gratuite. Une **orbe jaune** tombe toutes les
+15-20 s et offre un sort tiré au hasard parmi quatre.
 
 Six gestes existent : trait horizontal `_`, trait vertical `|`, chevron bas `V`,
 chevron haut `Ʌ`, éclair `⚡` et spirale `@`. Les deux derniers n'apparaissent
@@ -70,7 +72,7 @@ que sur les ennemis rares (violets).
 | [docs/gestures.md](docs/gestures.md) | Reconnaissance des gestes, seuils, **comment ajouter un geste** |
 | [docs/gameplay.md](docs/gameplay.md) | Règles, cycle du boss, tous les paramètres réglables |
 | [docs/quality.md](docs/quality.md) | Tests et lint : conventions et budget de complexité |
-| [docs/mana-and-spells.md](docs/mana-and-spells.md) | **Spécification en vigueur** : économie de mana, billes bleues, sorts aléatoires |
+| [docs/mana-and-spells.md](docs/mana-and-spells.md) | Économie de mana, billes bleues, sorts aléatoires, **et les mesures d'équilibrage** |
 | [docs/rewards.md](docs/rewards.md) | Catalogue de récompenses et prise de risque (deux hypothèses abandonnées, voir bandeau) |
 | [docs/spell-proposals.md](docs/spell-proposals.md) | Propositions de sorts (modèle de distribution non retenu, principes toujours valables) |
 

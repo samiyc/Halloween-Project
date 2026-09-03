@@ -1,13 +1,17 @@
 import { PLAYER, clampDelta, toFrames } from "../config/settings.js";
+import { SPELLS } from "../config/spells.js";
+import { EffectTracker } from "../game/effects.js";
 
 /**
  * The green square. Moved with ZQSD (and the arrow keys), it is the positional
  * half of the game's two-handed focus: the mouse casts glyph gestures anywhere
  * on screen with no range limit, while the player must physically close the
- * distance for its melee auto-attack to reach.
+ * distance for its melee auto-attack to reach — and, more importantly, must
+ * roam to collect the mana those gestures spend.
  *
- * The melee fires on a timer with no click and no key press — see
- * `game/combat.js` for the targeting.
+ * Movement speed and melee cadence are read through `effectiveSpeed` and
+ * `effectiveMeleeCooldownMs` rather than straight off `traits`, because the
+ * Célérité and Frénésie buffs modulate them.
  */
 export class Player {
   /**
@@ -22,8 +26,14 @@ export class Player {
     this.color = traits.color;
     this.x = x;
     this.y = y;
+    this.effects = new EffectTracker();
     /** Milliseconds until the next auto-attack. */
     this.meleeCooldownMs = traits.meleeCooldownMs;
+    /**
+     * The duration the current cooldown started from. Kept separately so that
+     * activating Frénésie mid-cooldown cannot push `meleeChargeRatio` above 1.
+     */
+    this.meleeCooldownTotalMs = traits.meleeCooldownMs;
   }
 
   get centerX() {
@@ -38,9 +48,26 @@ export class Player {
     return this.traits.meleeRange;
   }
 
+  /** Pixels per 60 Hz frame, after buffs. */
+  get effectiveSpeed() {
+    const boost = this.effects.isActive(SPELLS.haste.id)
+      ? SPELLS.haste.moveSpeedMultiplier
+      : 1;
+    return this.traits.speed * boost;
+  }
+
+  /** Milliseconds between auto-attacks, after buffs. */
+  get effectiveMeleeCooldownMs() {
+    const boost = this.effects.isActive(SPELLS.frenzy.id)
+      ? SPELLS.frenzy.attackSpeedMultiplier
+      : 1;
+    return this.traits.meleeCooldownMs / boost;
+  }
+
   /** 0 when ready to strike, 1 right after striking. */
   get meleeChargeRatio() {
-    return this.meleeCooldownMs / this.traits.meleeCooldownMs;
+    if (this.meleeCooldownTotalMs <= 0) return 0;
+    return this.meleeCooldownMs / this.meleeCooldownTotalMs;
   }
 
   /**
@@ -50,7 +77,8 @@ export class Player {
    */
   update(deltaMs, direction, bounds) {
     const frames = toFrames(deltaMs);
-    // Clamped like the movement above: an unclamped delta after a tab switch
+    this.effects.tick(deltaMs);
+    // Clamped like the movement below: an unclamped delta after a tab switch
     // would recharge the melee instantly instead of after the real 1.5s.
     this.meleeCooldownMs = Math.max(0, this.meleeCooldownMs - clampDelta(deltaMs));
     this.move(direction, frames, bounds);
@@ -67,7 +95,7 @@ export class Player {
     const magnitude = Math.hypot(direction.x, direction.y);
     if (magnitude === 0) return;
 
-    const step = (this.traits.speed * frames) / magnitude;
+    const step = (this.effectiveSpeed * frames) / magnitude;
     this.x = clamp(this.x + direction.x * step, 0, bounds.width - this.size);
     this.y = clamp(this.y + direction.y * step, 0, bounds.height - this.size);
   }
@@ -77,7 +105,8 @@ export class Player {
   }
 
   startMeleeCooldown() {
-    this.meleeCooldownMs = this.traits.meleeCooldownMs;
+    this.meleeCooldownTotalMs = this.effectiveMeleeCooldownMs;
+    this.meleeCooldownMs = this.meleeCooldownTotalMs;
   }
 
   /**
