@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { MANA } from "../src/config/mana.js";
 import { PLAYER, TIME } from "../src/config/settings.js";
-import { BUFF_HALOS, SPELLS, SPELL_IDS } from "../src/config/spells.js";
+import { BUFF_HALOS, SPELLS, SPELL_IDS, spellRangeOf } from "../src/config/spells.js";
 import { Enemy } from "../src/entities/enemy.js";
 import { Player } from "../src/entities/player.js";
 import { EffectTracker } from "../src/game/effects.js";
@@ -221,6 +221,33 @@ describe("spellbook", () => {
     game.boss.y = game.player.y;
     applyFrost(game);
     assert.equal(game.boss.slowRemainingMs, undefined);
+  });
+});
+
+describe("spellRangeOf", () => {
+  it("gives Givre its radius and nothing else a range", () => {
+    assert.equal(spellRangeOf(SPELLS.frost.id), SPELLS.frost.radius);
+    assert.equal(spellRangeOf(SPELLS.frenzy.id), null);
+    assert.equal(spellRangeOf(SPELLS.haste.id), null);
+    assert.equal(spellRangeOf(SPELLS.potion.id), null);
+  });
+
+  it("returns null for an empty slot, so nothing is previewed", () => {
+    assert.equal(spellRangeOf(null), null);
+    assert.equal(spellRangeOf("nope"), null);
+  });
+
+  it("keeps every spell area scaled with the world", () => {
+    // The guard for a real miss: the world was scaled x1.6 and this radius was
+    // left behind, quietly dropping Givre from ~4x the melee reach to 2.7x.
+    // Anything covering an area must stay a zone tool, not a second melee.
+    for (const spell of Object.values(SPELLS)) {
+      if (spell.radius === undefined) continue;
+      assert.ok(
+        spell.radius > PLAYER.meleeRange * 3,
+        `"${spell.id}" covers ${spell.radius}px against a ${PLAYER.meleeRange}px melee`,
+      );
+    }
   });
 });
 

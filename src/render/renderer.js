@@ -128,6 +128,32 @@ export class Renderer {
   }
 
   /**
+   * The area a held spell would cover, previewed around the player.
+   *
+   * Dashed, so it never reads as the solid melee circle or as a buff halo. It
+   * is drawn only while the spell is in the slot: casting empties the slot, so
+   * the preview clears itself.
+   *
+   * The dash pattern has to be reset — `setLineDash` is context state, and it
+   * would otherwise leak into the melee circle and the gesture trail drawn
+   * moments later in the same frame.
+   *
+   * @param {import("../entities/player.js").Player} player
+   * @param {number} radius
+   */
+  drawSpellRange(player, radius) {
+    const { ctx } = this;
+    ctx.save();
+    ctx.setLineDash([14, 12]);
+    ctx.beginPath();
+    ctx.arc(player.centerX, player.centerY, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = PALETTE.spellRange;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
    * A falling pickup: blue mana orb or yellow spell orb.
    * @param {import("../entities/pickup.js").Pickup} pickup
    */

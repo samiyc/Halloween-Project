@@ -226,12 +226,22 @@ dépenser de la mana pour en gagner.
 | Sort | Effet | Durée | Signal visuel |
 | --- | --- | --- | --- |
 | **Frénésie** | vitesse d'attaque mêlée ×1,5 — cooldown 1500 → 1000 ms | 8 s | halo **orange** sur le héros |
-| **Givre** | ennemis dans un rayon autour du héros ralentis ×0,5 | 8 s | ennemis touchés en **bleu clair** |
+| **Givre** | ennemis dans un rayon de **320 px** ralentis ×0,5 | 8 s | **cercle en pointillés** tant qu'il est en réserve, puis ennemis touchés en **bleu clair** |
 | **Célérité** | vitesse de déplacement ×1,5 — 4 → 6 px/frame | 8 s | halo **cyan** sur le héros |
 | **Grande potion** | +50 pts de mana | instantané | flash de la jauge |
 
-Rayon du givre : **200 px** proposé, à confirmer à l'essai. C'est presque quatre
-fois la portée de mêlée (55 px), donc un vrai outil de zone et pas un doublon.
+Rayon du givre : **320 px**, soit un peu plus de quatre fois la portée de mêlée
+(75 px) — un vrai outil de zone, pas un doublon.
+
+⚠️ C'est une distance en coordonnées monde, et elle a été **oubliée** lors du
+passage du monde à ×1,6 : restée à 200, elle était tombée à 2,7× la portée de
+mêlée au lieu des ~4× prévus. Toute nouvelle distance de sort doit suivre
+l'échelle du monde ; un test le vérifie désormais.
+
+**Le cercle est affiché en pointillés tant que le Givre est en réserve.** On voit
+donc quels ennemis seront pris *avant* de dépenser le sort, ce qui transforme
+« lancer et espérer » en décision de placement. Il disparaît de lui-même au
+lancement, puisque l'emplacement se vide.
 
 La potion à +50 représente la moitié de la jauge, soit 5 sorts communs. C'est
 volontairement fort : elle doit rester un tirage qu'on est content d'avoir.

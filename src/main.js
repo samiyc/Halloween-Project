@@ -1,4 +1,5 @@
 import { CANVAS, FIELD } from "./config/settings.js";
+import { spellRangeOf } from "./config/spells.js";
 import { recognizeStroke } from "./engine/gesture/recognizer.js";
 import { Keyboard } from "./engine/keyboard.js";
 import { GameLoop } from "./engine/loop.js";
@@ -109,6 +110,11 @@ class App {
     for (const pickup of game.pickups) {
       renderer.drawPickup(pickup);
     }
+    // Only spells that cover an area have a range to preview, and only while
+    // one is actually held — casting empties the slot and the circle goes.
+    const spellRange = spellRangeOf(game.heldSpell);
+    if (spellRange !== null) renderer.drawSpellRange(game.player, spellRange);
+
     renderer.drawMeleeFlash(game.lastMeleeTargets);
     renderer.drawBuffHalos(game.player);
     renderer.drawPlayer(game.player, game.lastMeleeTargets.length > 0);

@@ -25,8 +25,15 @@ export const SPELLS = Object.freeze({
     name: "Givre",
     hint: "Ennemis ralentis",
     durationMs: 8000,
-    /** Nearly four times the melee reach (55px), so it is a zone tool. */
-    radius: 200,
+    /**
+     * Roughly four times the melee reach, so it stays a zone tool rather than
+     * a second melee.
+     *
+     * 320, not 200: this is a world-space distance and it was missed when the
+     * world was scaled x1.6, which had quietly dropped it to 2.7x the melee.
+     * Any new spell distance has to scale with the world too.
+     */
+    radius: 320,
     slowFactor: 0.5,
   }),
   haste: Object.freeze({
@@ -47,6 +54,21 @@ export const SPELLS = Object.freeze({
 
 /** @type {readonly SpellId[]} */
 export const SPELL_IDS = Object.freeze(Object.keys(SPELLS));
+
+/**
+ * The area a held spell would cover, so the HUD can preview it.
+ *
+ * Showing the circle while the spell sits in the slot is what turns Givre from
+ * "cast and hope" into a placement decision: you can see which enemies are
+ * inside before spending it. The preview disappears on its own once the slot
+ * empties.
+ *
+ * @param {SpellId|string|null} spellId
+ * @returns {number|null} null for spells that have no area
+ */
+export function spellRangeOf(spellId) {
+  return SPELLS[spellId]?.radius ?? null;
+}
 
 /**
  * Buffs that live on the player and need a visible halo.

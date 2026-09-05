@@ -29,6 +29,8 @@ export const PALETTE = Object.freeze({
   sidebar: SIDEBAR.color,
   field: "#546872",
   sidebarEdge: "rgba(0, 0, 0, 0.35)",
+  /** Preview of a held spell area. Frost blue, so it reads as the Givre. */
+  spellRange: "rgba(127, 212, 255, 0.55)",
 });
 
 /** Scaled with the world (x1.6) so text keeps its weight against the entities. */

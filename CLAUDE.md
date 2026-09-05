@@ -211,6 +211,13 @@ Implemented. `docs/mana-and-spells.md` holds the reasoning and the measurements.
 - A yellow orb every 15-20s grants one random spell into a single slot, cast with
   `E` or right-click, free and with no cooldown. While a spell is held, further
   yellow orbs are **not** collected and keep falling.
+- A spell that covers an area previews it: `spellRangeOf()` returns a radius and
+  `Renderer.drawSpellRange()` draws a dashed circle while the spell sits in the
+  slot, so you can see who is caught before spending it. Casting empties the
+  slot, which clears the preview on its own.
+- **Spell distances are world-space and must scale with the world.** Givre's
+  radius was left at 200 through the x1.6 pass and quietly fell to 2.7x the melee
+  reach instead of ~4x; it is 320 now, and a test guards the ratio.
 
 ### Balance is measured, not guessed
 
