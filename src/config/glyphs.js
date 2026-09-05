@@ -36,7 +36,7 @@ export const GLYPHS = Object.freeze({
   chevronDown: { id: "chevronDown", symbol: "V", name: "Chevron bas", rarity: "common" },
   chevronUp: { id: "chevronUp", symbol: "Ʌ", name: "Chevron haut", rarity: "common" },
   bolt: { id: "bolt", symbol: "⚡", name: "Éclair", rarity: "rare" },
-  spiral: { id: "spiral", symbol: "@", name: "Spirale", rarity: "rare" },
+  spiral: { id: "spiral", symbol: "🌀", name: "Spirale", rarity: "rare" },
 });
 
 /** Every glyph, as an array. */
@@ -86,11 +86,12 @@ export function glyphForSymbol(symbol) {
  */
 export function assertGlyphSymbolsAreSafe(glyphs = ALL_GLYPHS) {
   for (const glyph of glyphs) {
-    if (glyph.symbol.length !== 1) {
+    const codePoints = [...glyph.symbol].length;
+    if (codePoints !== 1) {
       throw new Error(
         `Glyph "${glyph.id}" uses symbol ${JSON.stringify(glyph.symbol)} spanning ` +
-          `${glyph.symbol.length} UTF-16 code units. Symbols must be a single ` +
-          `BMP code unit or sequence slicing breaks.`,
+          `${codePoints} code points. A symbol must be exactly one code point, ` +
+          `or sequence slicing cannot tell where it ends.`,
       );
     }
   }

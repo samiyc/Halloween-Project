@@ -48,7 +48,8 @@ src/
   config/    glyphs.js, settings.js — single source of truth, no logic
   tools/     random.js — the only Math.random() in the repo
   entities/  Entity → Enemy, Boss, Player   (state + behaviour, no drawing)
-  game/      game.js (orchestrator), combat.js, spawner.js
+  game/      game.js (orchestrator), combat.js, spawner.js, mana.js,
+             collection.js, pickup-spawner.js, effects.js, spellbook.js
   engine/    loop.js, keyboard.js, pointer.js, gesture/{geometry,recognizer}.js
   render/    renderer.js, hud.js, palette.js — all 2D-context code
 ```
@@ -64,10 +65,15 @@ orientation→symbol comparison in a subclass** — that duplication across
 
 `Ʌ` is U+0245 (LATIN CAPITAL LETTER TURNED V), not a Greek lambda or ASCII `A`.
 
-**Hard constraint:** every `symbol` must be a single UTF-16 code unit, because
-sequences are consumed with `sequence[0]` / `sequence.slice(1)`. An astral emoji
-(🌀, U+1F300) is two units and corrupts sequences silently. That is why the
-spiral uses `@`. `assertGlyphSymbolsAreSafe()` is covered by a test.
+**Hard constraint:** every `symbol` must be exactly one **code point**. Astral
+emoji are fine — the spiral is 🌀 (U+1F300, two UTF-16 code units).
+
+That was not always true. Sequences were consumed with `sequence[0]` /
+`sequence.slice(1)`, which work on code units, so 🌀 left a lone surrogate behind
+and corrupted every sequence carrying it. `Entity.nextSymbol` and
+`Entity.dropFirstSymbol()` now walk code points — **anything consuming a
+sequence must go through those two members**, never index a sequence directly.
+`assertGlyphSymbolsAreSafe()` is covered by a test.
 
 Adding a gesture = add a registry entry + a `detectXxx()` in `recognizer.js`.
 See `docs/gestures.md`.
@@ -130,24 +136,48 @@ runs 20.10.
 boss phase, player, score). Off by default. Useful for driving the running game
 from the console or from browser automation.
 
-## Canvas sizing
+## Canvas, field and sidebars
 
-Internal resolution is 1200x900 (1.5x the original 800x600, same 4:3), scaled by
-CSS to fill the viewport. **`PointerTracker.toCanvasPoint()` multiplies mouse
-coordinates back into the internal resolution** — measured scale was 0.96, so
-without it every gesture lands off-target. Do not remove that scaling.
+The canvas is **1900x1200**: a **1300x1200 board** (`FIELD`) centred between two
+**300px sidebars** (`SIDEBAR`) that carry the whole HUD. `FIELD` is derived from
+the other two, so they cannot drift apart.
 
-Field height went 600 → 900 at unchanged speeds, so enemies take 1.5x longer to
-cross and the game is easier than before. Left deliberately untouched; tune via
-`ENEMY.baseSpeed` or `SPAWN.chancePerFrame` in `src/config/settings.js`.
+**Game logic works entirely in field coordinates (0..1300 x 0..1200) and knows
+nothing about the sidebars.** Two places bridge the gap, and only two:
+
+- `Renderer.inField(draw)` translates by `FIELD.x` and clips to the board. All
+  entity drawing goes through it; the clip is what stops a sequence label at
+  x = 0 from spilling onto the strip.
+- `PointerTracker.toCanvasPoint()` undoes the CSS scale **and then** subtracts
+  `FIELD.x`. Order matters — subtracting first would scale the offset too.
+
+Do not bake the offset into spawning, clamping or escape detection instead.
+
+A trap worth knowing: gesture recognition is translation-invariant (it reads
+only differences), so a wrong offset would **not** break gestures. The only
+symptom is a trail drawn 300px from the cursor, which no unit test can see.
+Check it in the browser.
+
+`main.js` must pass `FIELD` as the game bounds. It once passed `canvas.width`,
+which put the player at the canvas centre and let the board run under the
+sidebars — the unit tests missed it because they construct `Game` with defaults.
+
+The CSS keeps a 19:12 aspect ratio and scales the canvas to the viewport;
+`PointerTracker` handles the resulting scale (measured at 1.28).
+
+The board has grown twice (800x600 → 1200x900 → 1300x1200) at unchanged speeds,
+so enemies take much longer to cross than originally tuned. Framing the play area
+did not shrink it: it is **44% larger** than the previous 1200x900. Win rate held
+anyway, because a taller board slows the threat and the mana collection equally.
+Tune with `MANA.costCommon` first, then `ENEMY.baseSpeed` / `SPAWN.chancePerFrame`.
 
 ## The mana economy
 
 Implemented. `docs/mana-and-spells.md` holds the reasoning and the measurements.
 
-- Gestures cost mana: **8** points for `_ | V Ʌ`, **24** for the rare `⚡ @`.
+- Gestures cost mana: **8** points for `_ | V Ʌ`, **24** for the rare `⚡ 🌀`.
   Blue orbs are worth 5 and fall at 1.5x the enemy rate and speed. Gauge maxes at
-  100, starts empty, trickles 2 points/s.
+  **150**, starts at **20**, trickles 2 points/s.
 - **A recognised gesture that hits nothing still costs.** That is what makes
   precision matter. An unrecognised stroke (`recognizeStroke` → `null`) casts
   nothing and costs nothing. Insufficient mana takes nothing and sets
@@ -165,8 +195,8 @@ Implemented. `docs/mana-and-spells.md` holds the reasoning and the measurements.
 
 The costs above came out of a headless simulation, not intuition. Design said 10
 points ("a cast costs 2 orbs"); at 10 the game was winnable 4 times in 10,
-because the real collection ceiling is **57%** — capping income near 5.9 pts/s
-against a 9-18 pts/s demand. At 8 it is 8 in 10.
+because the collection ceiling is real — **45%** on the current board — capping
+income near 5.1 pts/s against a 9-18 pts/s demand. At 8 it is 10 in 10.
 
 **Cost is a far stronger lever than drop rate**: −20% cost doubled the win rate
 while +33% orbs gained one point, since orbs you cannot reach are worth nothing.

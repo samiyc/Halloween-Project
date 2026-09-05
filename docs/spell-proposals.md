@@ -146,7 +146,7 @@ combo qu'on découvre soi-même vaut mieux qu'un sort qui fait les deux.
 | Effet | Bond instantané de 140 px dans la direction de déplacement courante |
 | Cooldown | 2 s |
 
-La portée de mêlée est petite (55 px) et les ennemis sont dispersés sur 1200 px :
+La portée de mêlée est petite (55 px) et les ennemis sont dispersés sur 1300 px :
 sans mobilité, le personnage passe son temps à marcher. Un cooldown court en
 fait un outil de confort plutôt qu'un sort.
 

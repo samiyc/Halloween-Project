@@ -12,25 +12,29 @@ import {
 } from "../src/config/glyphs.js";
 
 describe("glyph registry", () => {
-  it("keeps every symbol to a single UTF-16 code unit", () => {
-    // Sequences are consumed with sequence[0] and sequence.slice(1). An astral
-    // emoji is two code units and would corrupt every sequence containing it,
-    // so this is a hard constraint rather than a style preference.
+  it("keeps every symbol to a single code point", () => {
+    // Astral emoji are allowed — Entity walks code points, not code units — but
+    // a symbol still has to be exactly one character, or nothing can tell where
+    // it ends inside a sequence.
     assert.equal(assertGlyphSymbolsAreSafe(), true);
     for (const glyph of ALL_GLYPHS) {
-      assert.equal(glyph.symbol.length, 1, `${glyph.id} spans multiple code units`);
+      assert.equal([...glyph.symbol].length, 1, `${glyph.id} is not a single code point`);
     }
   });
 
-  it("rejects an astral symbol", () => {
-    // Guards the guard: proves assertGlyphSymbolsAreSafe would actually catch
-    // someone reaching for a spiral emoji instead of a BMP character.
+  it("accepts an astral emoji as a symbol", () => {
+    // 🌀 is two UTF-16 code units. It used to be rejected because sequences were
+    // sliced by code unit, which left a lone surrogate behind. Entity now walks
+    // code points, so it is a legal symbol.
     const astral = "\u{1F300}";
     assert.equal(astral.length, 2, "the emoji really is two code units");
-    assert.throws(
-      () => assertGlyphSymbolsAreSafe([{ id: "whirl", symbol: astral }]),
-      /UTF-16 code units/,
-    );
+    assert.equal([...astral].length, 1, "but a single code point");
+    assert.equal(assertGlyphSymbolsAreSafe([{ id: "whirl", symbol: astral }]), true);
+  });
+
+  it("still rejects a symbol made of several code points", () => {
+    // Guards the guard: two characters glued together have no findable end.
+    assert.throws(() => assertGlyphSymbolsAreSafe([{ id: "double", symbol: "ab" }]), /code points/);
   });
 
   it("uses U+0245 for the chevron, not a lambda or an ASCII A", () => {
@@ -58,8 +62,10 @@ describe("glyph registry", () => {
   });
 
   it("splits common and rare symbols without overlap", () => {
+    // Deliberately not pinning the rare symbols to literal characters: they are
+    // cosmetic and get changed. What must hold is the split itself.
     assert.deepEqual([...COMMON_SYMBOLS], ["_", "|", "V", "Ʌ"]);
-    assert.deepEqual([...RARE_SYMBOLS], ["⚡", "@"]);
+    assert.equal(RARE_SYMBOLS.length, 2);
     const overlap = COMMON_SYMBOLS.filter((symbol) => RARE_SYMBOLS.includes(symbol));
     assert.deepEqual(overlap, []);
   });

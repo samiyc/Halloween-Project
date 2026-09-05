@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { COMMON_SYMBOLS, RARE_SYMBOLS } from "../src/config/glyphs.js";
+import { COMMON_SYMBOLS, RARE_SYMBOLS, symbolFor } from "../src/config/glyphs.js";
 import { BOSS, PLAYER, TIME } from "../src/config/settings.js";
 import { BOSS_PHASE, Boss } from "../src/entities/boss.js";
 import { Enemy } from "../src/entities/enemy.js";
@@ -25,10 +25,26 @@ describe("Entity sequence matching", () => {
   it("matches the rare glyphs through the same single code path", () => {
     // Before the registry existed this mapping was duplicated in Enemy and in
     // Boss; adding bolt and spiral only works now because it lives in one place.
-    const entity = new Entity({ x: 0, y: 0, size: 25, sequence: "⚡@" });
+    //
+    // Built from the registry rather than written out: the rare symbols are
+    // cosmetic and do get changed, and a literal here would break every time.
+    const sequence = symbolFor("bolt") + symbolFor("spiral");
+    const entity = new Entity({ x: 0, y: 0, size: 25, sequence });
+
     assert.equal(entity.decrementSequence("bolt"), true);
     assert.equal(entity.decrementSequence("spiral"), true);
     assert.equal(entity.isDefeated(), true);
+  });
+
+  it("consumes a multi-code-unit symbol whole", () => {
+    // 🌀 spans two UTF-16 code units. Slicing by code unit would leave a lone
+    // surrogate behind and quietly corrupt the rest of the sequence.
+    const entity = new Entity({ x: 0, y: 0, size: 25, sequence: "\u{1F300}_" });
+    assert.equal(entity.sequence.length, 3, "two code units plus the underscore");
+    assert.equal(entity.nextSymbol, "\u{1F300}");
+
+    entity.stripSymbol();
+    assert.equal(entity.sequence, "_", "no half-character left over");
   });
 
   it("ignores unknown and null glyph ids", () => {

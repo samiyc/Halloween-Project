@@ -34,26 +34,28 @@ deux, et un seul si le geste réutilise une forme déjà détectée.
 | Chevron bas | `chevronDown` | `V` | commun |
 | Chevron haut | `chevronUp` | `Ʌ` | commun |
 | Éclair (zigzag) | `bolt` | `⚡` | rare |
-| Spirale | `spiral` | `@` | rare |
+| Spirale | `spiral` | `🌀` | rare |
 
 ## ⚠️ La contrainte sur les symboles
 
-Les séquences sont des chaînes consommées avec `sequence[0]` et
-`sequence.slice(1)`, qui travaillent sur des **unités de code UTF-16**.
-
-Tout symbole doit donc tenir sur **une seule unité de code**, c'est-à-dire
-appartenir au plan multilingue de base (U+0000 à U+FFFF).
+Tout symbole doit être **exactement un point de code**. N'importe quel caractère
+Unicode convient, émoji astraux compris.
 
 ```js
-"⚡".length   // 1  → U+26A1, OK
-"@".length    // 1  → U+0040, OK
-"⟳".length    // 1  → U+27F3, OK
-"🌀".length   // 2  → U+1F300, CASSE TOUT
+[..."⚡"].length    // 1 → OK
+[..."🌀"].length   // 1 → OK, bien que la chaîne fasse 2 unités UTF-16
+[..."ab"].length   // 2 → refusé : rien ne dirait où le symbole s'arrête
 ```
 
-Un émoji astral comme 🌀 compte pour deux unités : `slice(1)` n'en retirerait
-que la moitié et corromprait silencieusement la séquence. C'est pour cela que la
-spirale utilise `@` et non un émoji.
+**Ça n'a pas toujours été vrai.** Les séquences étaient consommées avec
+`sequence[0]` et `sequence.slice(1)`, qui travaillent sur des **unités de code
+UTF-16**. Un émoji astral comme 🌀 en occupe deux : `slice(1)` n'en retirait que
+la moitié et laissait derrière lui un demi-caractère qui corrompait tout le
+reste de la séquence. La spirale avait donc dû se contenter de `@`.
+
+`Entity.nextSymbol` et `Entity.dropFirstSymbol()` parcourent désormais des
+points de code. **Tout ce qui consomme une séquence doit passer par ces deux
+membres** — jamais d'indexation directe, sinon le bug revient sans bruit.
 
 `assertGlyphSymbolsAreSafe()` vérifie cette règle et un test unitaire la fait
 échouer si elle est violée — l'erreur se produit donc au `npm test`, pas en jeu.
@@ -123,7 +125,7 @@ distance directe faible.
 ## Ajouter un geste
 
 1. **Déclarer le glyphe** dans `src/config/glyphs.js` — en respectant la règle
-   de l'unité de code unique.
+   du point de code unique.
 2. **Le détecter** dans `recognizer.js` : ajouter une fonction `detectXxx()` et
    l'insérer dans la chaîne `??` de `recognizeStroke()`, **à la bonne place**
    (du plus spécifique au plus générique).

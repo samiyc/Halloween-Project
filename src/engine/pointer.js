@@ -11,6 +11,8 @@
  * @typedef {{x: number, y: number}} Point
  */
 
+import { FIELD } from "../config/settings.js";
+
 export class PointerTracker {
   /**
    * @param {HTMLCanvasElement} canvas
@@ -91,9 +93,13 @@ export class PointerTracker {
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = rect.width === 0 ? 1 : this.canvas.width / rect.width;
     const scaleY = rect.height === 0 ? 1 : this.canvas.height / rect.height;
+    // Two corrections, in order: CSS scale back to canvas pixels, then the
+    // sidebar offset so the stroke lands in the same coordinates as entities.
+    // Recognition itself is translation-invariant, so getting the offset wrong
+    // would not break gestures — it would only draw the trail 300px off.
     return {
-      x: (event.clientX - rect.left) * scaleX,
-      y: (event.clientY - rect.top) * scaleY,
+      x: (event.clientX - rect.left) * scaleX - FIELD.x,
+      y: (event.clientY - rect.top) * scaleY - FIELD.y,
     };
   }
 }

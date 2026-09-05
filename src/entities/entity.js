@@ -42,9 +42,28 @@ export class Entity {
     return this.y + this.size / 2;
   }
 
-  /** The symbol this entity is currently waiting for, or null when cleared. */
+  /**
+   * The symbol this entity is currently waiting for, or null when cleared.
+   *
+   * Destructuring uses the string iterator, which walks **code points** rather
+   * than UTF-16 code units. That is what lets an astral emoji like 🌀 (U+1F300,
+   * two code units) be a symbol: `sequence[0]` would have returned half a
+   * surrogate pair and corrupted the sequence.
+   */
   get nextSymbol() {
-    return this.sequence[0] ?? null;
+    const [first] = this.sequence;
+    return first ?? null;
+  }
+
+  /**
+   * Removes the head symbol, whatever its length in code units.
+   * @returns {string|null} the symbol removed, or null on an empty sequence
+   */
+  dropFirstSymbol() {
+    const symbol = this.nextSymbol;
+    if (symbol === null) return null;
+    this.sequence = this.sequence.slice(symbol.length);
+    return symbol;
   }
 
   /**
@@ -65,7 +84,7 @@ export class Entity {
    */
   decrementSequence(glyphId) {
     if (!this.matches(glyphId)) return false;
-    this.sequence = this.sequence.slice(1);
+    this.dropFirstSymbol();
     return true;
   }
 
@@ -75,10 +94,7 @@ export class Entity {
    * @returns {string|null} the symbol removed
    */
   stripSymbol() {
-    const symbol = this.nextSymbol;
-    if (symbol === null) return null;
-    this.sequence = this.sequence.slice(1);
-    return symbol;
+    return this.dropFirstSymbol();
   }
 
   isDefeated() {

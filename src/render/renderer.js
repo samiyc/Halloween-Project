@@ -1,3 +1,4 @@
+import { FIELD, SIDEBAR } from "../config/settings.js";
 import { BUFF_HALOS } from "../config/spells.js";
 import { FONTS, PALETTE } from "./palette.js";
 
@@ -24,6 +25,53 @@ export class Renderer {
 
   clear() {
     this.ctx.clearRect(0, 0, this.width, this.height);
+  }
+
+  /** Left edge of the right-hand sidebar, in canvas coordinates. */
+  get rightSidebarX() {
+    return this.width - SIDEBAR.width;
+  }
+
+  /**
+   * The two sidebars and the board they frame.
+   *
+   * The field is painted explicitly rather than left to the CSS background, so
+   * the sidebars can sit a shade darker — the eye then reads the lighter
+   * rectangle as the subject and the strips as chrome.
+   */
+  drawBackground() {
+    const { ctx } = this;
+    ctx.fillStyle = PALETTE.sidebar;
+    ctx.fillRect(0, 0, this.width, this.height);
+
+    ctx.fillStyle = PALETTE.field;
+    ctx.fillRect(FIELD.x, FIELD.y, FIELD.width, FIELD.height);
+
+    ctx.fillStyle = PALETTE.sidebarEdge;
+    ctx.fillRect(FIELD.x - 1, 0, 1, this.height);
+    ctx.fillRect(FIELD.x + FIELD.width, 0, 1, this.height);
+  }
+
+  /**
+   * Runs a drawing callback in field coordinates: translated past the left
+   * sidebar, and clipped to the board.
+   *
+   * Game logic works in 0..FIELD.width and knows nothing about the sidebars, so
+   * this is the single place that offset is applied. The clip is not
+   * decoration: an enemy at x = 0 draws its sequence above and slightly left of
+   * itself, which would otherwise spill onto the strip.
+   *
+   * @param {() => void} draw
+   */
+  inField(draw) {
+    const { ctx } = this;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(FIELD.x, FIELD.y, FIELD.width, FIELD.height);
+    ctx.clip();
+    ctx.translate(FIELD.x, FIELD.y);
+    draw();
+    ctx.restore();
   }
 
   /**

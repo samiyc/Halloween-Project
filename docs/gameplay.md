@@ -84,9 +84,17 @@ Ils sont tous dans `src/config/settings.js`, et rien n'est en dur ailleurs.
 
 | Réglage | Valeur | Note |
 | --- | --- | --- |
-| `CANVAS.width` / `height` | 1200 × 900 | 1,5× l'original (800 × 600), même ratio 4:3 |
+| `CANVAS` | 1900 × 1200 | Toute la surface de dessin |
+| `FIELD` | 1300 × 1200 à x = 300 | **La zone jouable.** C'est elle qui sert de bornes au jeu |
+| `SIDEBAR` | 300 × 1200, `#40494E` | Les deux bandeaux du HUD, un ton plus sombre |
 | `TIME.referenceFrameMs` | 16,67 | L'unité de toutes les vitesses : « une frame à 60 Hz » |
 | `TIME.maxFrameMs` | 100 | Plafond d'un delta ; au-delà le jeu ne saute pas |
+
+`FIELD` est **dérivé** de `CANVAS` et `SIDEBAR`, pas écrit en dur : les trois ne
+peuvent donc pas diverger. La logique de jeu travaille entièrement en
+coordonnées terrain (0..1300 × 0..1200) et ignore l'existence des bandeaux —
+c'est le renderer qui translate et découpe, et le pointeur qui retranche
+l'offset.
 
 ### Ennemis
 
@@ -116,6 +124,7 @@ aussi plus de temps.
 | Réglage | Valeur |
 | --- | --- |
 | `size` | 25 — même taille que les carrés gris |
+| Position de départ | **centre du terrain** (650, 600) |
 | `speed` | 4 px/frame (240 px/s), normalisée en diagonale |
 | `meleeRange` | 55 px, de centre à centre |
 | `meleeCooldownMs` | 1500 (1000 sous Frénésie) |
@@ -124,7 +133,7 @@ aussi plus de temps.
 
 | Réglage | Valeur |
 | --- | --- |
-| `MANA.max` / `start` | 100 / 0 |
+| `MANA.max` / `start` | 150 / 20 |
 | `MANA.regenPerSecond` | 2 |
 | `MANA.orbValue` | 5 |
 | `MANA.costCommon` / `costRare` | 8 / 24 — **le levier de difficulté principal** |
@@ -140,12 +149,15 @@ aussi plus de temps.
 
 ## Un point d'équilibrage à surveiller
 
-Le terrain est passé de 600 à 900 px de haut. À vitesse inchangée, **les ennemis
-mettent 1,5× plus de temps à traverser**, ce qui rend le jeu sensiblement plus
-facile qu'avant.
+Le terrain a grandi deux fois : 800×600 à l'origine, puis 1200×900, et
+aujourd'hui **1300×1200**. À vitesses inchangées, les ennemis mettent donc
+deux fois plus de temps à traverser qu'au départ.
 
-C'est volontairement laissé tel quel : les valeurs d'origine sont préservées
-pour que le changement soit un choix conscient et non une conséquence subie.
-Deux leviers, selon l'effet recherché — augmenter `ENEMY.baseSpeed` pour
-retrouver la pression temporelle, ou `SPAWN.chancePerFrame` pour retrouver la
-densité à l'écran.
+Contre-intuitif mais mesuré : encadrer la zone de jeu ne l'a pas rétrécie, elle
+a **grandi de 44 %** (1,56 Mpx contre 1,08). Le taux de victoire n'a pourtant pas
+bougé, parce que le terrain plus haut ralentit autant la menace que la collecte
+de mana. Détail dans [mana-and-spells.md](mana-and-spells.md).
+
+Deux leviers si le jeu devient trop facile — `ENEMY.baseSpeed` pour la pression
+temporelle, `SPAWN.chancePerFrame` pour la densité — et `MANA.costCommon` pour
+la tension de ressource, qui est de loin le plus sensible.

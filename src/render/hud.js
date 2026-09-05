@@ -1,5 +1,6 @@
 import { ALL_GLYPHS } from "../config/glyphs.js";
 import { MANA } from "../config/mana.js";
+import { SIDEBAR } from "../config/settings.js";
 import { SPELLS } from "../config/spells.js";
 import { END_REASON, GAME_STATUS } from "../game/game.js";
 import { FONTS, PALETTE } from "./palette.js";
@@ -10,11 +11,25 @@ const LOSS_MESSAGES = Object.freeze({
   [END_REASON.enemy]: "Un ennemi a franchi la ligne.",
 });
 
+const PAD = 20;
+
 /**
- * Score, melee cooldown, glyph legend and the end-of-game overlay.
+ * The mana gauge: vertical, in the bottom-right corner, and 1.25x the old
+ * horizontal bar (12x220 becomes 15x275). It is the resource the whole economy
+ * turns on, so it gets a corner to itself.
+ */
+const MANA_GAUGE = Object.freeze({ thickness: 15, length: 275 });
+
+/**
+ * Everything drawn in the two sidebars, plus the end-of-game overlay.
  *
- * Split from `Renderer` because these draw in screen space and read game
- * state, whereas the renderer draws entities in board space.
+ * The HUD used to be painted over the board and kept disappearing behind
+ * falling enemies. It now lives entirely in the strips either side of the
+ * field, in canvas coordinates — unlike the renderer, which works translated
+ * into field space.
+ *
+ * Layout: the player's own state on the left (spell slot, score, melee), the
+ * reference material on the right (glyph legend, mana gauge).
  */
 export class Hud {
   /** @param {CanvasRenderingContext2D} ctx */
@@ -30,77 +45,64 @@ export class Hud {
     return this.ctx.canvas.height;
   }
 
+  /** Left edge of the right-hand sidebar. */
+  get rightX() {
+    return this.width - SIDEBAR.width;
+  }
+
   /** @param {import("../game/game.js").Game} game */
   draw(game) {
-    this.drawScore(game.enemiesDefeated);
-    this.drawManaGauge(game);
-    this.drawMeleeCooldown(game.player);
     this.drawSpellSlot(game.heldSpell);
+    this.drawScore(game.enemiesDefeated);
+    this.drawMeleeCooldown(game.player);
     this.drawGlyphLegend();
+    this.drawManaGauge(game);
   }
 
-  /**
-   * The mana gauge, with the cost of a common gesture marked on it so the
-   * player can see at a glance whether the next stroke is affordable.
-   * @param {import("../game/game.js").Game} game
-   */
-  drawManaGauge(game) {
-    const { ctx } = this;
-    const width = 220;
-    const height = 12;
-    const x = 16;
-    const y = this.height - 76;
-
-    ctx.fillStyle = PALETTE.manaTrack;
-    ctx.fillRect(x, y, width, height);
-    ctx.fillStyle = game.manaWarningMs > 0 ? PALETTE.manaWarning : PALETTE.manaFill;
-    ctx.fillRect(x, y, width * game.mana.ratio, height);
-
-    // A tick at the price of one common gesture.
-    const tick = x + (width * MANA.costCommon) / MANA.max;
-    ctx.fillStyle = PALETTE.text;
-    ctx.fillRect(tick, y, 1, height);
-
-    ctx.font = FONTS.label;
-    ctx.textAlign = "left";
-    ctx.fillStyle = PALETTE.textMuted;
-    ctx.fillText(`Mana ${Math.floor(game.mana.value)}/${MANA.max}`, x + width + 10, y + height - 1);
-  }
+  // ---------------------------------------------------------------- left ---
 
   /**
-   * The single spell slot, top left, as the design asks.
+   * The single spell slot, top of the left strip.
    * @param {string|null} heldSpell
    */
   drawSpellSlot(heldSpell) {
     const { ctx } = this;
     const spell = heldSpell ? SPELLS[heldSpell] : null;
+    const width = SIDEBAR.width - 2 * PAD;
 
+    // Tall enough for three lines plus descenders: at 62 the last baseline sat
+    // exactly on the border and the text was clipped by its own box.
     ctx.strokeStyle = spell ? PALETTE.slotReady : PALETTE.slotEmpty;
     ctx.lineWidth = 2;
-    ctx.strokeRect(16, 16, 190, 44);
+    ctx.strokeRect(PAD, PAD, width, 84);
 
     ctx.textAlign = "left";
     if (!spell) {
       ctx.fillStyle = PALETTE.textMuted;
       ctx.font = FONTS.label;
-      ctx.fillText("Aucun sort", 28, 43);
+      ctx.fillText("Aucun sort", PAD + 14, PAD + 48);
       return;
     }
     ctx.fillStyle = PALETTE.slotReady;
     ctx.font = FONTS.hud;
-    ctx.fillText(spell.name, 28, 38);
+    ctx.fillText(spell.name, PAD + 14, PAD + 30);
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.fillText(`${spell.hint} — touche E`, 28, 54);
+    ctx.fillText(spell.hint, PAD + 14, PAD + 52);
+    ctx.fillText("touche E / clic droit", PAD + 14, PAD + 72);
   }
 
   /** @param {number} defeated */
   drawScore(defeated) {
     const { ctx } = this;
-    ctx.fillStyle = PALETTE.text;
-    ctx.font = FONTS.hud;
     ctx.textAlign = "left";
-    ctx.fillText(`Ghost Eliminated : ${defeated}`, 16, this.height - 20);
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = FONTS.label;
+    ctx.fillText("FANTÔMES", PAD, 168);
+
+    ctx.fillStyle = PALETTE.text;
+    ctx.font = FONTS.headline;
+    ctx.fillText(String(defeated), PAD, 214);
   }
 
   /**
@@ -110,40 +112,102 @@ export class Hud {
    */
   drawMeleeCooldown(player) {
     const { ctx } = this;
-    const barWidth = 140;
-    const barHeight = 6;
-    const x = 16;
-    const y = this.height - 46;
-    const ready = 1 - player.meleeChargeRatio;
+    const width = SIDEBAR.width - 2 * PAD;
+    const height = 8;
+    const y = 258;
 
-    ctx.fillStyle = PALETTE.cooldownTrack;
-    ctx.fillRect(x, y, barWidth, barHeight);
-    ctx.fillStyle = PALETTE.cooldownFill;
-    ctx.fillRect(x, y, barWidth * ready, barHeight);
-
+    ctx.textAlign = "left";
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.textAlign = "left";
-    ctx.fillText("Mêlée auto", x + barWidth + 10, y + barHeight);
+    ctx.fillText("MÊLÉE AUTO", PAD, y - 8);
+
+    ctx.fillStyle = PALETTE.cooldownTrack;
+    ctx.fillRect(PAD, y, width, height);
+    ctx.fillStyle = PALETTE.cooldownFill;
+    ctx.fillRect(PAD, y, width * (1 - player.meleeChargeRatio), height);
   }
+
+  // --------------------------------------------------------------- right ---
 
   /** Reminds the player which gesture draws which symbol. */
   drawGlyphLegend() {
     const { ctx } = this;
-    ctx.font = FONTS.label;
-    ctx.textAlign = "right";
-    ctx.fillStyle = PALETTE.textMuted;
+    const x = this.rightX + PAD;
 
-    let y = 24;
+    ctx.textAlign = "left";
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = FONTS.label;
+    ctx.fillText("GESTES", x, PAD + 16);
+
+    let y = PAD + 46;
     for (const glyph of ALL_GLYPHS) {
-      ctx.fillText(`${glyph.symbol}  ${glyph.name}`, this.width - 16, y);
-      y += 16;
+      ctx.fillStyle = glyph.rarity === "rare" ? PALETTE.rareSequence : PALETTE.text;
+      ctx.font = FONTS.sequence;
+      ctx.fillText(glyph.symbol, x, y);
+
+      ctx.fillStyle = PALETTE.textMuted;
+      ctx.font = FONTS.label;
+      ctx.fillText(glyph.name, x + 30, y);
+      y += 26;
     }
   }
 
   /**
-   * End-of-game overlay. The lines are spaced so the 48px headline and the
-   * 24px score no longer collide the way they did before.
+   * The vertical mana gauge, anchored bottom-right and filling upward.
+   *
+   * The tick marks what one common gesture costs, so "can I afford the next
+   * stroke" is answered by a glance rather than by reading the number.
+   *
+   * @param {import("../game/game.js").Game} game
+   */
+  drawManaGauge(game) {
+    const { ctx } = this;
+    const { thickness, length } = MANA_GAUGE;
+    const x = this.width - PAD - thickness;
+    const bottom = this.height - PAD;
+    const top = bottom - length;
+
+    ctx.fillStyle = PALETTE.manaTrack;
+    ctx.fillRect(x, top, thickness, length);
+
+    const filled = length * game.mana.ratio;
+    ctx.fillStyle = game.manaWarningMs > 0 ? PALETTE.manaWarning : PALETTE.manaFill;
+    ctx.fillRect(x, bottom - filled, thickness, filled);
+
+    const tickY = bottom - (length * MANA.costCommon) / MANA.max;
+    ctx.fillStyle = PALETTE.text;
+    ctx.fillRect(x, tickY, thickness, 1);
+
+    this.drawManaLabel(game, x, top, bottom);
+  }
+
+  /**
+   * @param {import("../game/game.js").Game} game
+   * @param {number} gaugeX
+   * @param {number} top
+   * @param {number} bottom
+   */
+  drawManaLabel(game, gaugeX, top, bottom) {
+    const { ctx } = this;
+    ctx.textAlign = "right";
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = FONTS.label;
+    ctx.fillText("MANA", gaugeX - 12, top + 12);
+
+    ctx.fillStyle = game.manaWarningMs > 0 ? PALETTE.manaWarning : PALETTE.text;
+    ctx.font = FONTS.subhead;
+    ctx.fillText(String(Math.floor(game.mana.value)), gaugeX - 12, bottom - 18);
+
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = FONTS.label;
+    ctx.fillText(`/ ${MANA.max}`, gaugeX - 12, bottom);
+  }
+
+  // ------------------------------------------------------------- overlay ---
+
+  /**
+   * End-of-game overlay, drawn across the whole canvas: the run is over, so
+   * the sidebars have nothing left to say.
    *
    * @param {import("../game/game.js").Game} game
    * @param {boolean} canRestart
@@ -164,7 +228,7 @@ export class Hud {
 
     ctx.fillStyle = PALETTE.text;
     ctx.font = FONTS.subhead;
-    ctx.fillText(`Ghost Eliminated : ${game.enemiesDefeated}`, centerX, centerY + 16);
+    ctx.fillText(`Fantômes éliminés : ${game.enemiesDefeated}`, centerX, centerY + 16);
 
     this.drawGameOverFooter(game, canRestart, centerX, centerY);
   }

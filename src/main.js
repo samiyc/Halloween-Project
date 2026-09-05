@@ -1,4 +1,4 @@
-import { CANVAS } from "./config/settings.js";
+import { CANVAS, FIELD } from "./config/settings.js";
 import { recognizeStroke } from "./engine/gesture/recognizer.js";
 import { Keyboard } from "./engine/keyboard.js";
 import { GameLoop } from "./engine/loop.js";
@@ -35,7 +35,9 @@ class App {
 
     const ctx = canvas.getContext("2d");
     this.canvas = canvas;
-    this.game = new Game({ bounds: { width: canvas.width, height: canvas.height } });
+    // The board, not the canvas: the sidebars are chrome, and passing the full
+    // canvas here would let enemies spawn and fall underneath them.
+    this.game = new Game({ bounds: { width: FIELD.width, height: FIELD.height } });
     this.renderer = new Renderer(ctx);
     this.hud = new Hud(ctx);
     this.keyboard = new Keyboard().attach(globalThis);
@@ -86,6 +88,20 @@ class App {
   render() {
     const { game, renderer } = this;
     renderer.clear();
+    renderer.drawBackground();
+    // Everything that lives in field coordinates goes inside, so the offset is
+    // applied once and nothing can spill onto the sidebars.
+    renderer.inField(() => this.drawBoard());
+    this.hud.draw(game);
+
+    if (!game.isRunning) {
+      this.hud.drawGameOver(game, this.gameOverElapsedMs >= RESTART_DELAY_MS);
+    }
+  }
+
+  /** Drawn in field coordinates — see `Renderer.inField()`. */
+  drawBoard() {
+    const { game, renderer } = this;
     renderer.drawBoss(game.boss);
     for (const enemy of game.enemies) {
       renderer.drawEntity(enemy);
@@ -97,11 +113,6 @@ class App {
     renderer.drawBuffHalos(game.player);
     renderer.drawPlayer(game.player, game.lastMeleeTarget !== null);
     renderer.drawStroke(this.pointer.currentPath());
-    this.hud.draw(game);
-
-    if (!game.isRunning) {
-      this.hud.drawGameOver(game, this.gameOverElapsedMs >= RESTART_DELAY_MS);
-    }
   }
 
   /**

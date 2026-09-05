@@ -400,7 +400,9 @@ describe("Game mana economy", () => {
 
   it("regenerates passively as the game runs", () => {
     const game = seededGame();
-    assert.equal(game.mana.value, 0, "starts empty");
+    assert.equal(game.mana.value, MANA.start, "opens on the configured reserve");
+
+    game.mana.value = 0;
     for (let frame = 0; frame < 60; frame += 1) game.update(FRAME);
     assert.ok(game.mana.value >= MANA.regenPerSecond - 0.1);
   });

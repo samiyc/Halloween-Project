@@ -11,9 +11,9 @@ import { GLYPHS } from "./glyphs.js";
  * costs exactly 2 orbs.
  */
 export const MANA = Object.freeze({
-  max: 100,
+  max: 150,
   /** The gauge starts empty: the first cast has to be earned. */
-  start: 0,
+  start: 20,
   /** 1 point every 0.5s. A floor against deadlock, not an income. */
   regenPerSecond: 2,
   /** What one blue orb is worth. */

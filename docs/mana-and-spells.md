@@ -25,12 +25,15 @@ personnage devient la source de cette ressource.** Le déplacement n'est plus un
 | Action | Coût | En billes |
 | --- | --- | --- |
 | Geste commun — `_` `\|` `V` `Ʌ` | **8 pts** | 1,6 |
-| Geste rare — `⚡` `@` | **24 pts** | 4,8 |
+| Geste rare — `⚡` `🌀` | **24 pts** | 4,8 |
 | Mêlée automatique | **gratuite** | — |
 | Sort du bonus jaune | **gratuit** | — |
 
-Jauge : **max 100**, **démarre à 0**, régénération passive de **1 pt / 0,5 s**
+Jauge : **max 150**, **démarre à 20**, régénération passive de **1 pt / 0,5 s**
 (soit 2 pts/s). Une bille bleue vaut **5 pts**.
+
+Le départ à 20 laisse de quoi lancer deux gestes communs sans rien avoir
+ramassé : de quoi réagir à la première vague, pas de quoi se passer de collecte.
 
 ### Ce que la simulation a corrigé
 
@@ -47,21 +50,24 @@ navigateur, avec un bot qui ramasse et lance au mieux. Le verdict :
 
 | Grandeur | Mesure |
 | --- | --- |
-| Plafond de collecte réel (bot qui ne fait *que* ramasser) | **57 %** des billes |
-| Offre maximale correspondante | **5,92 pts/s** (3,92 collecte + 2 passif) |
+| Plafond de collecte réel (bot qui ne fait *que* ramasser) | **45 %** des billes |
+| Offre maximale correspondante | **5,07 pts/s** (3,07 collecte + 2 passif) |
 | Demande pour suivre le rythme des ennemis | **9 à 18 pts/s** |
 
 L'offre plafonne à moins des deux tiers de la demande. Le « 100 % de collecte »
 de la conception initiale n'existe pas : on ne peut pas être partout, et les
-billes tombent plus vite que le joueur ne traverse l'écran. À 10 pts le sort, une
-partie n'était gagnée que **4 fois sur 10** ; à 8 pts, **8 fois sur 10**.
+billes continuent de tomber ailleurs pendant qu'on va en chercher une. À 10 pts
+le sort, une partie n'était gagnée que **4 fois sur 10** ; à 8 pts, **8 fois sur
+10**.
 
 Conséquence : « un sort coûte 2 billes » était le bon instinct mais ne tient pas
 au chiffre près. Un sort coûte 1,6 bille.
 
 ### Le coût est un levier bien plus fort que le taux de chute
 
-Table de calibration mesurée, 10 parties par ligne :
+Table de calibration mesurée, 10 parties par ligne. Relevée sur le terrain de
+1200×900 d'alors ; les proportions valent toujours, seuls les taux absolus ont
+bougé avec l'agrandissement (section suivante) :
 
 | Configuration | Victoires |
 | --- | --- |
@@ -72,7 +78,7 @@ Table de calibration mesurée, 10 parties par ligne :
 | coût 6/18, billes ×1,5 | 10/10 |
 
 Baisser le coût de 20 % double le taux de victoire ; augmenter le nombre de
-billes de 33 % ne fait gagner qu'un point. La raison est le plafond de 57 % :
+billes de 33 % ne fait gagner qu'un point. La raison est le plafond de collecte :
 **des billes qu'on ne peut pas atteindre ne valent rien.** Pour régler la
 difficulté, toucher `MANA.costCommon` d'abord, `MANA_ORB.chancePerFrame`
 seulement si l'écran doit paraître plus ou moins chargé.
@@ -82,17 +88,35 @@ Pour mémoire, les proportions qui restent vraies :
 | Source | Revenu | Équivaut à |
 | --- | --- | --- |
 | Passif seul | 2 pts/s | 1 sort commun / 4 s |
-| Collecte réaliste (57 %) | 5,92 pts/s | 1 sort commun / 1,4 s |
+| Collecte réaliste (45 %) | 5,07 pts/s | 1 sort commun / 1,6 s |
 
-La collecte rapporte environ **2× le passif**, qui ne sert donc qu'à éviter le
-blocage total. Et 100 pts font 12,5 sorts : une jauge qui se remplit *et* se
-vide visiblement.
+La collecte rapporte environ **1,5× le passif**, qui ne sert donc qu'à éviter le
+blocage total. Et 150 pts font 18 sorts : une réserve confortable, qui se vide
+tout de même en une poussée soutenue.
+
+### Ce que l'agrandissement du terrain a changé
+
+Le terrain est passé de 1200×900 à **1300×1200** quand les bandeaux latéraux ont
+été ajoutés. Mesuré avant et après :
+
+| | Collecte | Revenu | Victoires (bot, 10 parties) |
+| --- | --- | --- | --- |
+| 1200×900 | 52 % | 5,54 pts/s | 9/10 |
+| **1300×1200** | **45 %** | 5,07 pts/s | **10/10** |
+
+Deux constats contre-intuitifs. D'abord la zone jouable **grandit de 44 %**
+(1,56 Mpx contre 1,08) : encadrer le jeu ne l'a pas rétréci. Ensuite le revenu
+baisse — les billes sont plus dispersées — **sans que la difficulté augmente**,
+parce que le terrain 33 % plus haut ralentit autant la menace que la collecte.
+
+À retenir : la géométrie **n'apporte pas** de mana. Ce sont `max: 150` et
+`start: 20` qui l'ont fait.
 
 ### Le geste raté doit coûter
 
 C'est le point le plus important de tout le document.
 
-Au plafond de collecte, on peut lancer un sort toutes les 1,4 s, alors que
+Au plafond de collecte, on peut lancer un sort toutes les 1,6 s, alors que
 tracer un geste en prend environ 1. **Si seuls les gestes réussis coûtaient, la
 mana ne contraindrait quasiment jamais** et tout ce système ne serait qu'un
 compteur décoratif.
@@ -141,20 +165,21 @@ figurant, il est l'alternative économique au sort cher.
 | --- | --- | --- |
 | Forme | cercle bleu | |
 | Diamètre | **12 px** | la moitié d'un cube gris (25 px) |
-| Vitesse de chute | **×1,5 celle des ennemis** → ~1,05 px/frame | traversée en 14,3 s |
+| Vitesse de chute | **×1,5 celle des ennemis** → ~1,05 px/frame | traversée en 19 s (terrain de 1200 px) |
 | Taux d'apparition | **×1,5 celui des ennemis** → ~1,35/s | ennemis : 0,9/s |
 | Valeur | 5 pts | |
 
-Le joueur se déplace à 240 px/s et traverse toute la largeur en 5 s, alors qu'une
-bille reste 14,3 s à l'écran. On pourrait croire que presque toutes sont
-atteignables : la mesure dit **57 %** pour un bot qui ne fait que ramasser, parce
+Le joueur se déplace à 240 px/s et traverse toute la largeur en 5,4 s, alors qu'une
+bille reste 19 s à l'écran. On pourrait croire que presque toutes sont
+atteignables : la mesure dit **45 %** pour un bot qui ne fait que ramasser, parce
 qu'on ne peut pas être à deux endroits et que les billes tombent en continu. Le
 jeu porte sur le **routage**, pas sur la vitesse pure.
 
 ### ⚠️ Densité à l'écran
 
-À 1,35 bille/s pour 14,3 s de traversée, il y aurait **environ 19 billes
-simultanément** si aucune n'était ramassée, en plus des ennemis. C'est chargé.
+À 1,35 bille/s pour 19 s de traversée, il y aurait **environ 26 billes
+simultanément** si aucune n'était ramassée, en plus des ennemis. C'est chargé —
+et c'est une des raisons d'avoir sorti le HUD de la zone de jeu.
 
 Si l'écran devient illisible à l'essai, le bon levier est **d'accélérer la
 chute** — elles restent moins longtemps, la densité baisse, le revenu total ne

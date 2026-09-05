@@ -41,10 +41,10 @@ body {
 }
 
 #gameCanvas {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 19 / 12;
   /* Fallback for browsers without dvh. */
-  width: min(100%, calc((100vh - (2 * var(--frame))) * 4 / 3));
-  width: min(100%, calc((100dvh - (2 * var(--frame))) * 4 / 3));
+  width: min(100%, calc((100vh - (2 * var(--frame))) * 19 / 12));
+  width: min(100%, calc((100dvh - (2 * var(--frame))) * 19 / 12));
   height: auto;
   display: block;
   border: 3px solid var(--canvas-border);

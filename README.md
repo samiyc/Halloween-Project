@@ -55,14 +55,33 @@ aucune dépendance runtime).
 | Clic gauche | Recommence la partie une fois l'écran de fin affiché |
 
 Les gestes coûtent de la **mana** : 8 points, 24 pour l'éclair et la spirale. On
-la ramasse en **billes bleues** avec le personnage ; la jauge démarre vide. Un
+la ramasse en **billes bleues** avec le personnage ; la jauge monte à 150 et
+démarre à 20. Un
 geste reconnu est facturé **même s'il ne touche rien**, ce qui récompense la
 précision. La mêlée, elle, reste gratuite. Une **orbe jaune** tombe toutes les
 15-20 s et offre un sort tiré au hasard parmi quatre.
 
 Six gestes existent : trait horizontal `_`, trait vertical `|`, chevron bas `V`,
-chevron haut `Ʌ`, éclair `⚡` et spirale `@`. Les deux derniers n'apparaissent
+chevron haut `Ʌ`, éclair `⚡` et spirale `🌀`. Les deux derniers n'apparaissent
 que sur les ennemis rares (violets).
+
+## L'écran
+
+Le canvas fait 1900×1200 : une **zone jouable de 1300×1200 au centre**, encadrée
+par deux **bandeaux de 300 px** qui portent tout le HUD. Rien ne se dessine plus
+par-dessus le jeu.
+
+```
+┌────────────┬──────────────────────┬────────────┐
+│ Sort       │                      │ Gestes     │
+│ Fantômes   │     zone jouable     │            │
+│ Mêlée      │      1300×1200       │       Mana │
+└────────────┴──────────────────────┴────────────┘
+     300              1300               300
+```
+
+La logique de jeu travaille en coordonnées terrain et ignore les bandeaux : le
+renderer translate, le pointeur retranche l'offset.
 
 ## Documentation
 

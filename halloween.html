@@ -8,14 +8,17 @@
     </head>
     <body>
         <!--
-            The canvas resolution is set from src/config/settings.js at boot, so
-            it is intentionally not hard-coded here. CSS scales the element to
-            fill the viewport while keeping the 4:3 ratio.
+            The canvas resolution is set from src/config/settings.js at boot;
+            the attributes below are only a fallback before the module runs.
+            CSS scales the element to fill the viewport at its 19:12 ratio.
+
+            That surface is a 1300x1200 board flanked by two 300px sidebars
+            carrying the HUD — see FIELD and SIDEBAR in the config.
 
             Only one script tag: src/main.js is the single entry point and pulls
             in the rest of the ES module graph itself.
         -->
-        <canvas id="gameCanvas" width="1200" height="900"></canvas>
+        <canvas id="gameCanvas" width="1900" height="1200"></canvas>
         <script type="module" src="src/main.js"></script>
     </body>
 </html>

@@ -7,10 +7,41 @@
  * "…PerFrame" values are per 60 Hz frame; see `TIME.referenceFrameMs`.
  */
 
-/** Internal canvas resolution. 1200x900 is 1.5x the original 800x600, same 4:3. */
+/** Internal canvas resolution: the drawing surface as a whole. */
 export const CANVAS = Object.freeze({
-  width: 1200,
-  height: 900,
+  width: 1900,
+  height: 1200,
+});
+
+/**
+ * The two vertical strips that carry the HUD.
+ *
+ * They exist so nothing is ever drawn on top of the board: the score, the spell
+ * slot and the glyph legend used to sit over the play area and disappear behind
+ * falling enemies.
+ */
+export const SIDEBAR = Object.freeze({
+  width: 300,
+  /** Slightly darker than the field, so the eye reads the board as the subject. */
+  color: "#40494E",
+});
+
+/**
+ * The playable board, centred between the two sidebars.
+ *
+ * Derived from CANVAS and SIDEBAR rather than written out, so the three can
+ * never drift apart.
+ *
+ * Game logic works entirely in field coordinates (0..width, 0..height) and
+ * knows nothing about the sidebars — `Renderer` translates by `FIELD.x` and
+ * `PointerTracker` subtracts it. Keep it that way: baking the offset into
+ * spawning, clamping or escape detection would spread it across the codebase.
+ */
+export const FIELD = Object.freeze({
+  x: SIDEBAR.width,
+  y: 0,
+  width: CANVAS.width - 2 * SIDEBAR.width,
+  height: CANVAS.height,
 });
 
 export const TIME = Object.freeze({

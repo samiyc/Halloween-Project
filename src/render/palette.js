@@ -1,3 +1,5 @@
+import { SIDEBAR } from "../config/settings.js";
+
 /**
  * Every colour and font used on the canvas. Kept apart from `settings.js` so
  * that gameplay tuning and visual tuning do not share a file.
@@ -23,6 +25,10 @@ export const PALETTE = Object.freeze({
   manaWarning: "#FF6B6B",
   slotEmpty: "rgba(255, 255, 255, 0.30)",
   slotReady: "#FFD447",
+  /** Sidebars sit slightly darker than the board, so the board reads as the subject. */
+  sidebar: SIDEBAR.color,
+  field: "#546872",
+  sidebarEdge: "rgba(0, 0, 0, 0.35)",
 });
 
 export const FONTS = Object.freeze({

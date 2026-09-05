@@ -1,5 +1,5 @@
 import { MANA, castCost } from "../config/mana.js";
-import { CANVAS, clampDelta } from "../config/settings.js";
+import { FIELD, PLAYER, clampDelta } from "../config/settings.js";
 import { SPELL_IDS } from "../config/spells.js";
 import { Boss } from "../entities/boss.js";
 import { Player } from "../entities/player.js";
@@ -38,7 +38,7 @@ export class Game {
    * @param {{width: number, height: number}} [options.bounds]
    * @param {import("../tools/random.js").Rng} [options.rng]
    */
-  constructor({ bounds = { width: CANVAS.width, height: CANVAS.height }, rng = systemRandom } = {}) {
+  constructor({ bounds = { width: FIELD.width, height: FIELD.height }, rng = systemRandom } = {}) {
     this.bounds = bounds;
     this.rng = rng;
     this.reset();
@@ -50,9 +50,11 @@ export class Game {
     /** @type {import("../entities/pickup.js").Pickup[]} */
     this.pickups = [];
     this.boss = new Boss({ fieldWidth: this.bounds.width, rng: this.rng });
+    // Centred, not parked at the bottom. Starting low meant walking up through
+    // an empty board every run before anything was in reach.
     this.player = new Player({
-      x: this.bounds.width / 2,
-      y: this.bounds.height * 0.8,
+      x: (this.bounds.width - PLAYER.size) / 2,
+      y: (this.bounds.height - PLAYER.size) / 2,
     });
     this.spawner = new Spawner({ bounds: this.bounds, rng: this.rng });
     this.pickupSpawner = new PickupSpawner({ bounds: this.bounds, rng: this.rng });
