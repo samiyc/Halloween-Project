@@ -31,12 +31,13 @@ export const PALETTE = Object.freeze({
   sidebarEdge: "rgba(0, 0, 0, 0.35)",
 });
 
+/** Scaled with the world (x1.6) so text keeps its weight against the entities. */
 export const FONTS = Object.freeze({
-  sequence: "16px Arial",
-  rareSequence: "bold 18px Arial",
-  label: "12px Arial",
-  hud: "15px Arial",
-  headline: "48px Arial",
-  subhead: "24px Arial",
-  hint: "13px Arial",
+  sequence: "26px Arial",
+  rareSequence: "bold 29px Arial",
+  label: "19px Arial",
+  hud: "24px Arial",
+  headline: "76px Arial",
+  subhead: "38px Arial",
+  hint: "21px Arial",
 });

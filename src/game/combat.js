@@ -10,9 +10,9 @@
  * Applies one recognised gesture to the whole board.
  *
  * A gesture has no range limit and hits every entity at once: each enemy whose
- * next symbol matches loses it, and so does the boss. That board-wide reach is
- * what the player's melee trades away for the ability to strike a single tough
- * target regardless of which symbol it is waiting for.
+ * next symbol matches loses it, and so does the boss. The melee trades that
+ * board-wide reach for a small circle, in exchange for ignoring which symbol a
+ * target is waiting for.
  *
  * @param {import("../config/glyphs.js").GlyphId|null} glyphId
  * @param {object} board
@@ -37,50 +37,54 @@ export function resolveGesture(glyphId, { enemies, boss = null }) {
 }
 
 /**
- * The melee auto-attack: strips one symbol from the single closest target
- * within reach, whatever that symbol is. No click, no key press.
+ * The melee auto-attack: strips one symbol from **every** target inside the
+ * circle, whatever those symbols are. No click, no key press.
  *
- * Closest-only is deliberate. An area melee would make positioning trivially
- * strong and undercut the gestures; one target per tick keeps the character a
- * tool for focusing a tough enemy rather than a crowd clearer.
+ * It used to hit only the closest target, which made the character a tool for
+ * focusing one tough enemy. Hitting the whole circle instead rewards walking
+ * into a crowd, so the range was tightened by 15% to pay for it — the circle
+ * covers proportionally less ground than it did as a single-target attack.
  *
  * @param {import("../entities/player.js").Player} player
  * @param {object} board
  * @param {import("../entities/enemy.js").Enemy[]} board.enemies
  * @param {import("../entities/boss.js").Boss|null} [board.boss]
- * @returns {{target: object, symbol: string, defeated: boolean}|null}
+ * @returns {{hits: Array<{target: object, symbol: string}>, defeated: object[]}|null}
  */
 export function resolveMelee(player, { enemies, boss = null }) {
   if (!player.isMeleeReady()) return null;
 
-  const target = findMeleeTarget(player, enemies, boss);
-  if (!target) return null;
+  const hits = [];
+  const defeated = [];
 
-  const symbol = target.stripSymbol();
-  if (symbol === null) return null;
+  for (const target of meleeTargets(player, enemies, boss)) {
+    const symbol = target.stripSymbol();
+    // The boss refuses to be stripped while retreating, so a null can come back
+    // even from a target that was in range.
+    if (symbol === null) continue;
+    hits.push({ target, symbol });
+    if (target.isDefeated()) defeated.push(target);
+  }
+
+  // Swinging at nothing must not cost the rhythm: the cooldown only starts once
+  // at least one symbol has actually come off.
+  if (hits.length === 0) return null;
 
   player.startMeleeCooldown();
-  return { target, symbol, defeated: target.isDefeated() };
+  return { hits, defeated };
 }
 
 /**
+ * Everything within reach and still worth hitting.
+ *
  * @param {import("../entities/player.js").Player} player
  * @param {import("../entities/enemy.js").Enemy[]} enemies
  * @param {import("../entities/boss.js").Boss|null} boss
- * @returns {object|null}
+ * @returns {object[]}
  */
-function findMeleeTarget(player, enemies, boss) {
+function meleeTargets(player, enemies, boss) {
   const candidates = boss !== null && !boss.isInvincible ? [...enemies, boss] : enemies;
-
-  let closest = null;
-  let closestDistance = Infinity;
-
-  for (const candidate of candidates) {
-    if (candidate.isDefeated()) continue;
-    const distance = player.distanceTo(candidate);
-    if (distance > player.meleeRange || distance >= closestDistance) continue;
-    closest = candidate;
-    closestDistance = distance;
-  }
-  return closest;
+  return candidates.filter(
+    (candidate) => !candidate.isDefeated() && player.distanceTo(candidate) <= player.meleeRange,
+  );
 }

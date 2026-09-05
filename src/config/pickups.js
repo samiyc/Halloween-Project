@@ -14,8 +14,8 @@ export const PICKUP_KIND = Object.freeze({
 
 export const MANA_ORB = Object.freeze({
   kind: PICKUP_KIND.mana,
-  /** Half a grey cube (25px) across, so 6px of radius. */
-  radius: 6,
+  /** Half a grey cube (40px) across, so 10px of radius. */
+  radius: 10,
   color: "#4FA8FF",
   /**
    * 1.5x the average enemy speed (0.7) and 1.5x their spawn rate (0.015).
@@ -27,7 +27,7 @@ export const MANA_ORB = Object.freeze({
 
 export const SPELL_ORB = Object.freeze({
   kind: PICKUP_KIND.spell,
-  radius: 9,
+  radius: 14,
   color: "#FFD447",
   /**
    * Slower than a mana orb. It is rare and it matters, so it has to be
@@ -41,7 +41,7 @@ export const SPELL_ORB = Object.freeze({
 
 /**
  * How close a pickup's centre must be to the player's centre to be taken.
- * Generous by design — chasing a 12px dot with pixel precision is not the
+ * Generous by design — chasing a 20px dot with pixel precision is not the
  * skill this system is testing.
  */
-export const PICKUP_MAGNET_PADDING = 6;
+export const PICKUP_MAGNET_PADDING = 10;

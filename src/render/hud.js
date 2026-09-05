@@ -14,11 +14,13 @@ const LOSS_MESSAGES = Object.freeze({
 const PAD = 20;
 
 /**
- * The mana gauge: vertical, in the bottom-right corner, and 1.25x the old
- * horizontal bar (12x220 becomes 15x275). It is the resource the whole economy
- * turns on, so it gets a corner to itself.
+ * The mana gauge, sized off the mockup: a tall vertical bar down the left
+ * sidebar, hugging the play area, with its labels to the left of it.
+ *
+ * It sits on the left rather than the right because that is the edge the eye
+ * already returns to for the spell slot and the score.
  */
-const MANA_GAUGE = Object.freeze({ thickness: 15, length: 275 });
+const MANA_GAUGE = Object.freeze({ thickness: 18, length: 460 });
 
 /**
  * Everything drawn in the two sidebars, plus the end-of-game overlay.
@@ -55,8 +57,8 @@ export class Hud {
     this.drawSpellSlot(game.heldSpell);
     this.drawScore(game.enemiesDefeated);
     this.drawMeleeCooldown(game.player);
-    this.drawGlyphLegend();
     this.drawManaGauge(game);
+    this.drawGlyphLegend();
   }
 
   // ---------------------------------------------------------------- left ---
@@ -70,26 +72,26 @@ export class Hud {
     const spell = heldSpell ? SPELLS[heldSpell] : null;
     const width = SIDEBAR.width - 2 * PAD;
 
-    // Tall enough for three lines plus descenders: at 62 the last baseline sat
-    // exactly on the border and the text was clipped by its own box.
+    // Sized for three lines of the x1.6 fonts plus descenders. At 84 the last
+    // baseline sat on the border and the text was clipped by its own box.
     ctx.strokeStyle = spell ? PALETTE.slotReady : PALETTE.slotEmpty;
     ctx.lineWidth = 2;
-    ctx.strokeRect(PAD, PAD, width, 84);
+    ctx.strokeRect(PAD, PAD, width, 114);
 
     ctx.textAlign = "left";
     if (!spell) {
       ctx.fillStyle = PALETTE.textMuted;
       ctx.font = FONTS.label;
-      ctx.fillText("Aucun sort", PAD + 14, PAD + 48);
+      ctx.fillText("Aucun sort", PAD + 16, PAD + 64);
       return;
     }
     ctx.fillStyle = PALETTE.slotReady;
     ctx.font = FONTS.hud;
-    ctx.fillText(spell.name, PAD + 14, PAD + 30);
+    ctx.fillText(spell.name, PAD + 16, PAD + 42);
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.fillText(spell.hint, PAD + 14, PAD + 52);
-    ctx.fillText("touche E / clic droit", PAD + 14, PAD + 72);
+    ctx.fillText(spell.hint, PAD + 16, PAD + 74);
+    ctx.fillText("touche E / clic droit", PAD + 16, PAD + 100);
   }
 
   /** @param {number} defeated */
@@ -98,11 +100,11 @@ export class Hud {
     ctx.textAlign = "left";
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.fillText("FANTÔMES", PAD, 168);
+    ctx.fillText("FANTÔMES", PAD, 190);
 
     ctx.fillStyle = PALETTE.text;
     ctx.font = FONTS.headline;
-    ctx.fillText(String(defeated), PAD, 214);
+    ctx.fillText(String(defeated), PAD, 262);
   }
 
   /**
@@ -113,13 +115,13 @@ export class Hud {
   drawMeleeCooldown(player) {
     const { ctx } = this;
     const width = SIDEBAR.width - 2 * PAD;
-    const height = 8;
-    const y = 258;
+    const height = 12;
+    const y = 332;
 
     ctx.textAlign = "left";
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.fillText("MÊLÉE AUTO", PAD, y - 8);
+    ctx.fillText("MÊLÉE AUTO", PAD, y - 12);
 
     ctx.fillStyle = PALETTE.cooldownTrack;
     ctx.fillRect(PAD, y, width, height);
@@ -137,9 +139,9 @@ export class Hud {
     ctx.textAlign = "left";
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.fillText("GESTES", x, PAD + 16);
+    ctx.fillText("GESTES", x, PAD + 20);
 
-    let y = PAD + 46;
+    let y = PAD + 66;
     for (const glyph of ALL_GLYPHS) {
       ctx.fillStyle = glyph.rarity === "rare" ? PALETTE.rareSequence : PALETTE.text;
       ctx.font = FONTS.sequence;
@@ -147,8 +149,8 @@ export class Hud {
 
       ctx.fillStyle = PALETTE.textMuted;
       ctx.font = FONTS.label;
-      ctx.fillText(glyph.name, x + 30, y);
-      y += 26;
+      ctx.fillText(glyph.name, x + 46, y);
+      y += 40;
     }
   }
 
@@ -163,7 +165,9 @@ export class Hud {
   drawManaGauge(game) {
     const { ctx } = this;
     const { thickness, length } = MANA_GAUGE;
-    const x = this.width - PAD - thickness;
+    // Right-aligned inside the left sidebar, so the bar runs along the edge of
+    // the play area and its labels have the whole strip to their left.
+    const x = SIDEBAR.width - PAD - thickness;
     const bottom = this.height - PAD;
     const top = bottom - length;
 
@@ -192,15 +196,15 @@ export class Hud {
     ctx.textAlign = "right";
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.fillText("MANA", gaugeX - 12, top + 12);
+    ctx.fillText("MANA", gaugeX - 14, top + 16);
 
     ctx.fillStyle = game.manaWarningMs > 0 ? PALETTE.manaWarning : PALETTE.text;
     ctx.font = FONTS.subhead;
-    ctx.fillText(String(Math.floor(game.mana.value)), gaugeX - 12, bottom - 18);
+    ctx.fillText(String(Math.floor(game.mana.value)), gaugeX - 14, bottom - 30);
 
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.fillText(`/ ${MANA.max}`, gaugeX - 12, bottom);
+    ctx.fillText(`/ ${MANA.max}`, gaugeX - 14, bottom);
   }
 
   // ------------------------------------------------------------- overlay ---

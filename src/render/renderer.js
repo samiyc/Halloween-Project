@@ -1,4 +1,4 @@
-import { FIELD, SIDEBAR } from "../config/settings.js";
+import { FIELD } from "../config/settings.js";
 import { BUFF_HALOS } from "../config/spells.js";
 import { FONTS, PALETTE } from "./palette.js";
 
@@ -25,11 +25,6 @@ export class Renderer {
 
   clear() {
     this.ctx.clearRect(0, 0, this.width, this.height);
-  }
-
-  /** Left edge of the right-hand sidebar, in canvas coordinates. */
-  get rightSidebarX() {
-    return this.width - SIDEBAR.width;
   }
 
   /**
@@ -200,14 +195,16 @@ export class Renderer {
   }
 
   /**
-   * Highlights whatever the melee just hit.
-   * @param {{x: number, y: number, size: number}|null} target
+   * Outlines everything the melee just hit. The swing is an area attack, so
+   * this is how a player sees that walking into a group paid off.
+   * @param {readonly {x: number, y: number, size: number}[]} targets
    */
-  drawMeleeFlash(target) {
-    if (!target) return;
+  drawMeleeFlash(targets) {
     const { ctx } = this;
     ctx.strokeStyle = PALETTE.meleeFlash;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(target.x - 2, target.y - 2, target.size + 4, target.size + 4);
+    ctx.lineWidth = 3;
+    for (const target of targets) {
+      ctx.strokeRect(target.x - 3, target.y - 3, target.size + 6, target.size + 6);
+    }
   }
 }

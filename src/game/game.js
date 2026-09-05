@@ -67,8 +67,8 @@ export class Game {
     this.manaOrbsCollected = 0;
     /** Counts down after a refused cast, so the HUD can flash the gauge. */
     this.manaWarningMs = 0;
-    /** Set on the frame a melee lands, so the renderer can flash the hit. */
-    this.lastMeleeTarget = null;
+    /** Everything the melee hit this frame, so the renderer can flash them. */
+    this.lastMeleeTargets = [];
   }
 
   get isRunning() {
@@ -83,7 +83,7 @@ export class Game {
   update(deltaMs, moveDirection = { x: 0, y: 0 }) {
     if (!this.isRunning) return;
 
-    this.lastMeleeTarget = null;
+    this.lastMeleeTargets = [];
     this.manaWarningMs = Math.max(0, this.manaWarningMs - clampDelta(deltaMs));
     this.mana.regenerate(deltaMs);
 
@@ -135,11 +135,11 @@ export class Game {
   }
 
   runMelee() {
-    const hit = resolveMelee(this.player, { enemies: this.enemies, boss: this.boss });
-    if (!hit) return;
+    const swing = resolveMelee(this.player, { enemies: this.enemies, boss: this.boss });
+    if (!swing) return;
 
-    this.lastMeleeTarget = hit.target;
-    if (hit.defeated && hit.target !== this.boss) {
+    this.lastMeleeTargets = swing.hits.map((hit) => hit.target);
+    if (swing.defeated.some((target) => target !== this.boss)) {
       this.removeDefeatedEnemies();
     }
     this.boss.resolveClearedSequence();

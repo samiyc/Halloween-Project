@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { CANVAS, FIELD, PLAYER, SIDEBAR } from "../src/config/settings.js";
+import { MANA_ORB, SPELL_ORB } from "../src/config/pickups.js";
+import {
+  BOSS,
+  CANVAS,
+  ENEMY,
+  FIELD,
+  PLAYER,
+  RARE_ENEMY,
+  SIDEBAR,
+} from "../src/config/settings.js";
 import { PointerTracker } from "../src/engine/pointer.js";
 import { Game } from "../src/game/game.js";
 import { createSeededRandom } from "../src/tools/random.js";
@@ -41,6 +50,34 @@ describe("canvas layout", () => {
 
   it("centres the board, so the game-over overlay can use the canvas centre", () => {
     assert.equal(FIELD.x + FIELD.width / 2, CANVAS.width / 2);
+  });
+});
+
+describe("world scale invariants", () => {
+  it("keeps a mana orb exactly half a grey cube across", () => {
+    // The rule the orb size was originally derived from. Scaling the world has
+    // to preserve it, or the orbs stop reading as "small" next to an enemy.
+    assert.equal(MANA_ORB.radius * 2, ENEMY.size / 2);
+  });
+
+  it("keeps the spell orb bigger than a mana orb but smaller than an enemy", () => {
+    assert.ok(SPELL_ORB.radius > MANA_ORB.radius);
+    assert.ok(SPELL_ORB.radius * 2 < ENEMY.size);
+  });
+
+  it("keeps the melee circle wider than the player but a fraction of the board", () => {
+    assert.ok(PLAYER.meleeRange > PLAYER.size);
+    assert.ok(PLAYER.meleeRange < FIELD.width / 8, "an area melee must stay local");
+  });
+
+  it("keeps rare enemies visibly larger than common ones", () => {
+    assert.ok(RARE_ENEMY.size > ENEMY.size);
+  });
+
+  it("keeps the boss dwarfing an ordinary enemy", () => {
+    assert.ok(BOSS.size > ENEMY.size * 3);
+    // It shrinks once per life and must survive three of them.
+    assert.ok(BOSS.size - 3 * BOSS.shrinkPerLife > ENEMY.size);
   });
 });
 

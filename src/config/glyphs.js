@@ -35,8 +35,8 @@ export const GLYPHS = Object.freeze({
   vertical: { id: "vertical", symbol: "|", name: "Trait vertical", rarity: "common" },
   chevronDown: { id: "chevronDown", symbol: "V", name: "Chevron bas", rarity: "common" },
   chevronUp: { id: "chevronUp", symbol: "Ʌ", name: "Chevron haut", rarity: "common" },
-  bolt: { id: "bolt", symbol: "⚡", name: "Éclair", rarity: "rare" },
-  spiral: { id: "spiral", symbol: "🌀", name: "Spirale", rarity: "rare" },
+  bolt: { id: "bolt", symbol: "↯", name: "Éclair", rarity: "rare" },
+  spiral: { id: "spiral", symbol: "@", name: "Spirale", rarity: "rare" },
 });
 
 /** Every glyph, as an array. */

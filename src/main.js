@@ -109,9 +109,9 @@ class App {
     for (const pickup of game.pickups) {
       renderer.drawPickup(pickup);
     }
-    renderer.drawMeleeFlash(game.lastMeleeTarget);
+    renderer.drawMeleeFlash(game.lastMeleeTargets);
     renderer.drawBuffHalos(game.player);
-    renderer.drawPlayer(game.player, game.lastMeleeTarget !== null);
+    renderer.drawPlayer(game.player, game.lastMeleeTargets.length > 0);
     renderer.drawStroke(this.pointer.currentPath());
   }
 

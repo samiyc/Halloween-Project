@@ -25,7 +25,7 @@ personnage devient la source de cette ressource.** Le déplacement n'est plus un
 | Action | Coût | En billes |
 | --- | --- | --- |
 | Geste commun — `_` `\|` `V` `Ʌ` | **8 pts** | 1,6 |
-| Geste rare — `⚡` `🌀` | **24 pts** | 4,8 |
+| Geste rare — `↯` `@` | **24 pts** | 4,8 |
 | Mêlée automatique | **gratuite** | — |
 | Sort du bonus jaune | **gratuit** | — |
 
@@ -141,9 +141,13 @@ Jauge vide, ennemis qui descendent, plus rien à lancer : c'est une situation sa
 issue, et toute économie de ressource doit en prévoir une.
 
 Ici la sortie de secours est la mêlée, **gratuite**. Elle est lente (1,5 s) et
-mono-cible, donc elle ne remplace jamais les gestes, mais elle garantit qu'aucune
-partie ne devient injouable. C'est la vraie raison de la conserver — et la raison
-pour laquelle elle ne doit jamais coûter de mana.
+limitée à un cercle de 75 px, donc elle ne remplace jamais les gestes, mais elle
+garantit qu'aucune partie ne devient injouable. C'est la vraie raison de la
+conserver — et la raison pour laquelle elle ne doit jamais coûter de mana.
+
+Depuis qu'elle frappe **tout le cercle** et non plus la cible la plus proche,
+elle répond aussi aux groupes : se placer au milieu d'une nuée retire un symbole
+à chacun d'un seul coup. Sa portée a été resserrée de 15 % pour compenser.
 
 ### L'arbitrage sur les ennemis rares
 
@@ -153,6 +157,7 @@ Les gestes rares coûtent le triple. Face à un ennemi violet, deux routes :
 | --- | --- |
 | Tout aux gestes (≈ 2 communs + 2 rares) | **64 pts** de mana, soit 13 billes |
 | Aller au contact et laisser la mêlée faire | ~6 s de déplacement, **gratuit** |
+| Idem, mais sur trois rares groupés | toujours ~6 s : la mêlée les prend ensemble |
 
 C'est exactement la décision recherchée : le personnage n'est plus un
 figurant, il est l'alternative économique au sort cher.

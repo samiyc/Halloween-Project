@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { glyphForSymbol } from "../src/config/glyphs.js";
+import { RARE_SYMBOLS, glyphForSymbol } from "../src/config/glyphs.js";
 import { MANA } from "../src/config/mana.js";
 import { MANA_ORB, SPELL_ORB } from "../src/config/pickups.js";
 import { SPELL_IDS } from "../src/config/spells.js";
@@ -11,6 +11,7 @@ import { Spawner } from "../src/game/spawner.js";
 import { createSeededRandom } from "../src/tools/random.js";
 
 const FRAME = TIME.referenceFrameMs;
+const [RARE] = RARE_SYMBOLS;
 const BOUNDS = { width: 1200, height: 900 };
 
 /** @returns {Game} */
@@ -234,7 +235,7 @@ describe("Game housekeeping", () => {
   it("lands a melee on an enemy the player walks into", () => {
     const game = seededGame();
     const target = game.spawner.create();
-    target.sequence = "@@";
+    target.sequence = RARE.repeat(2);
     target.x = game.player.x;
     target.y = game.player.y;
     game.enemies = [target];
@@ -242,9 +243,30 @@ describe("Game housekeeping", () => {
 
     game.update(FRAME, { x: 0, y: 0 });
 
-    assert.equal(target.sequence, "@");
-    assert.equal(game.lastMeleeTarget, target);
+    assert.equal(target.sequence.length, 1, "one symbol came off");
+    assert.deepEqual(game.lastMeleeTargets, [target]);
     assert.equal(game.player.isMeleeReady(), false);
+  });
+
+  it("sweeps a whole group with one swing", () => {
+    // The melee is an area attack now: standing in a crowd is the point.
+    const game = seededGame();
+    const group = [0, 30, -30].map((offset) => {
+      const enemy = game.spawner.create();
+      enemy.sequence = "__";
+      enemy.x = game.player.x + offset;
+      enemy.y = game.player.y;
+      return enemy;
+    });
+    game.enemies = group;
+    game.player.meleeCooldownMs = 0;
+
+    game.update(FRAME);
+
+    assert.equal(game.lastMeleeTargets.length, 3);
+    for (const enemy of group) {
+      assert.equal(enemy.sequence, "_");
+    }
   });
 
   it("clears the melee marker on the following frame", () => {
@@ -257,9 +279,9 @@ describe("Game housekeeping", () => {
     game.player.meleeCooldownMs = 0;
 
     game.update(FRAME);
-    assert.ok(game.lastMeleeTarget);
+    assert.equal(game.lastMeleeTargets.length, 1);
     game.update(FRAME);
-    assert.equal(game.lastMeleeTarget, null);
+    assert.deepEqual(game.lastMeleeTargets, []);
   });
 
   it("scores a melee kill", () => {

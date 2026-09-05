@@ -20,10 +20,6 @@ export class ManaPool {
     return this.rates.max === 0 ? 0 : this.value / this.rates.max;
   }
 
-  get isFull() {
-    return this.value >= this.rates.max;
-  }
-
   /**
    * Passive trickle. Goes through `clampDelta` like everything else that
    * consumes a frame delta — otherwise a backgrounded tab would hand it several

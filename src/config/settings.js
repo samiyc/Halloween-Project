@@ -74,7 +74,7 @@ export const STROKE = Object.freeze({
 });
 
 export const ENEMY = Object.freeze({
-  size: 25,
+  size: 40,
   color: "#AAA",
   minSequence: 1,
   maxSequence: 5,
@@ -85,7 +85,7 @@ export const ENEMY = Object.freeze({
 });
 
 export const RARE_ENEMY = Object.freeze({
-  size: 32,
+  size: 50,
   color: "#8A63D2",
   minSequence: 2,
   maxSequence: 4,
@@ -99,13 +99,13 @@ export const RARE_ENEMY = Object.freeze({
 
 export const BOSS = Object.freeze({
   lives: 3,
-  size: 100,
+  size: 160,
   baseColor: "#FF4500",
   invincibleColor: "#888",
   speed: 0.25,
   /** Upward speed during the invincible retreat; ignores `speed`. */
   retreatSpeed: 1.5,
-  shrinkPerLife: 15,
+  shrinkPerLife: 24,
   speedGainPerLife: 0.25,
   /** Sequence length = sequenceBase + lives * sequencePerLife. */
   sequenceBase: 6,
@@ -113,12 +113,18 @@ export const BOSS = Object.freeze({
 });
 
 export const PLAYER = Object.freeze({
-  size: 25,
+  size: 40,
   color: "#3FD35F",
   /** Pixels per 60 Hz frame, applied per axis then normalised on diagonals. */
   speed: 4,
-  /** Distance from player centre to enemy centre for the melee to connect. */
-  meleeRange: 55,
+  /**
+   * Distance from player centre to enemy centre for the melee to connect.
+   *
+   * 55 x 1.6 (the world scale) x 0.85 (deliberately tightened when the melee
+   * became an area attack) = 75. It now hits everything inside the circle, so
+   * it had to cover proportionally less ground.
+   */
+  meleeRange: 75,
   /** Auto-attack period. Fires with no click and no key press. */
   meleeCooldownMs: 1500,
 });

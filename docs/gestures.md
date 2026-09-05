@@ -33,8 +33,8 @@ deux, et un seul si le geste réutilise une forme déjà détectée.
 | Trait vertical | `vertical` | `\|` | commun |
 | Chevron bas | `chevronDown` | `V` | commun |
 | Chevron haut | `chevronUp` | `Ʌ` | commun |
-| Éclair (zigzag) | `bolt` | `⚡` | rare |
-| Spirale | `spiral` | `🌀` | rare |
+| Éclair (zigzag) | `bolt` | `↯` | rare |
+| Spirale | `spiral` | `@` | rare |
 
 ## ⚠️ La contrainte sur les symboles
 
@@ -42,7 +42,7 @@ Tout symbole doit être **exactement un point de code**. N'importe quel caractè
 Unicode convient, émoji astraux compris.
 
 ```js
-[..."⚡"].length    // 1 → OK
+[..."↯"].length    // 1 → OK
 [..."🌀"].length   // 1 → OK, bien que la chaîne fasse 2 unités UTF-16
 [..."ab"].length   // 2 → refusé : rien ne dirait où le symbole s'arrête
 ```
@@ -51,7 +51,9 @@ Unicode convient, émoji astraux compris.
 `sequence[0]` et `sequence.slice(1)`, qui travaillent sur des **unités de code
 UTF-16**. Un émoji astral comme 🌀 en occupe deux : `slice(1)` n'en retirait que
 la moitié et laissait derrière lui un demi-caractère qui corrompait tout le
-reste de la séquence. La spirale avait donc dû se contenter de `@`.
+reste de la séquence. La spirale devait donc se contenter d'un caractère du
+plan de base, et c'est toujours `@` aujourd'hui — mais rien n'empêche plus de
+passer à 🌀 ou à n'importe quel autre émoji.
 
 `Entity.nextSymbol` et `Entity.dropFirstSymbol()` parcourent désormais des
 points de code. **Tout ce qui consomme une séquence doit passer par ces deux

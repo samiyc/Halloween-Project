@@ -50,7 +50,7 @@ aucune dépendance runtime).
 | --- | --- |
 | Souris (glisser) | Lance un geste. **Aucune limite de portée** : touche tout l'écran |
 | `Z` `Q` `S` `D` | Déplace le personnage vert (fonctionne aussi en `W` `A` `S` `D` sur QWERTY, et aux flèches) |
-| — | La mêlée se déclenche **seule** toutes les 1,5 s sur la cible la plus proche dans le cercle |
+| — | La mêlée se déclenche **seule** toutes les 1,5 s sur **tous** les ennemis du cercle |
 | `E` ou **clic droit** | Lance le sort en réserve, affiché en haut à gauche |
 | Clic gauche | Recommence la partie une fois l'écran de fin affiché |
 
@@ -62,7 +62,7 @@ précision. La mêlée, elle, reste gratuite. Une **orbe jaune** tombe toutes le
 15-20 s et offre un sort tiré au hasard parmi quatre.
 
 Six gestes existent : trait horizontal `_`, trait vertical `|`, chevron bas `V`,
-chevron haut `Ʌ`, éclair `⚡` et spirale `🌀`. Les deux derniers n'apparaissent
+chevron haut `Ʌ`, éclair `↯` et spirale `@`. Les deux derniers n'apparaissent
 que sur les ennemis rares (violets).
 
 ## L'écran
@@ -75,10 +75,15 @@ par-dessus le jeu.
 ┌────────────┬──────────────────────┬────────────┐
 │ Sort       │                      │ Gestes     │
 │ Fantômes   │     zone jouable     │            │
-│ Mêlée      │      1300×1200       │       Mana │
+│ Mêlée      │      1300×1200       │            │
+│       Mana │                      │            │
 └────────────┴──────────────────────┴────────────┘
      300              1300               300
 ```
+
+Le canvas est affiché **en 1:1** dès que l'écran fait au moins 1224 px de haut :
+1 px de code = 1 px à l'écran, du gris reste autour. Sur un écran plus petit il
+rétrécit au lieu de déborder.
 
 La logique de jeu travaille en coordonnées terrain et ignore les bandeaux : le
 renderer translate, le pointeur retranche l'offset.

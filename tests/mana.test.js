@@ -79,7 +79,6 @@ describe("ManaPool", () => {
     pool.gain(1000);
     assert.equal(pool.value, MANA.max);
     assert.equal(pool.ratio, 1);
-    assert.equal(pool.isFull, true);
   });
 
   it("ignores non-positive gains", () => {

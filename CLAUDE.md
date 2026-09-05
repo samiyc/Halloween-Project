@@ -66,7 +66,8 @@ orientation→symbol comparison in a subclass** — that duplication across
 `Ʌ` is U+0245 (LATIN CAPITAL LETTER TURNED V), not a Greek lambda or ASCII `A`.
 
 **Hard constraint:** every `symbol` must be exactly one **code point**. Astral
-emoji are fine — the spiral is 🌀 (U+1F300, two UTF-16 code units).
+emoji are allowed (🌀, U+1F300, is two UTF-16 code units and works); the spiral
+currently uses `@`.
 
 That was not always true. Sequences were consumed with `sequence[0]` /
 `sequence.slice(1)`, which work on code units, so 🌀 left a lone surrogate behind
@@ -162,8 +163,26 @@ Check it in the browser.
 which put the player at the canvas centre and let the board run under the
 sidebars — the unit tests missed it because they construct `Game` with defaults.
 
-The CSS keeps a 19:12 aspect ratio and scales the canvas to the viewport;
-`PointerTracker` handles the resulting scale (measured at 1.28).
+### Displayed 1:1 — and the trap it closes
+
+The CSS pins the canvas to **1:1** wherever there is room, via a `1900px` term
+in its `min()`. One canvas pixel is then one screen pixel, so a measurement taken
+in an image editor matches the constants in `settings.js`. It needs a viewport
+**≥ 1224px tall**; below that the other terms take over and the canvas shrinks
+rather than overflowing. Grey around the board is intentional.
+
+This closes a trap that will otherwise be rediscovered every time someone
+measures a screenshot: the browser used to stretch the canvas to fill the
+height, and the factor depended on the canvas size. At 1200x900 it was **×1.376**,
+at 1900x1200 only **×1.032** — so a 25px square went from 34px to 26px on screen
+**without a single constant changing**. If entities ever "look smaller", check
+the scale before touching `settings.js`.
+
+The world was then scaled **×1.6** (enemy 40, rare 50, boss 160, player 40, orb
+radius 10) to restore the old readability, this time with no zoom. Speeds were
+deliberately left alone, so pacing is unchanged and the board is simply denser.
+`PointerTracker` still undoes whatever CSS scale remains, so a smaller screen
+keeps working.
 
 The board has grown twice (800x600 → 1200x900 → 1300x1200) at unchanged speeds,
 so enemies take much longer to cross than originally tuned. Framing the play area
@@ -175,7 +194,7 @@ Tune with `MANA.costCommon` first, then `ENEMY.baseSpeed` / `SPAWN.chancePerFram
 
 Implemented. `docs/mana-and-spells.md` holds the reasoning and the measurements.
 
-- Gestures cost mana: **8** points for `_ | V Ʌ`, **24** for the rare `⚡ 🌀`.
+- Gestures cost mana: **8** points for `_ | V Ʌ`, **24** for the rare `↯ @`.
   Blue orbs are worth 5 and fall at 1.5x the enemy rate and speed. Gauge maxes at
   **150**, starts at **20**, trickles 2 points/s.
 - **A recognised gesture that hits nothing still costs.** That is what makes
@@ -183,7 +202,9 @@ Implemented. `docs/mana-and-spells.md` holds the reasoning and the measurements.
   nothing and costs nothing. Insufficient mana takes nothing and sets
   `manaWarningMs` so the HUD can flash.
 - **Melee is free**, which makes it the floor that stops an empty gauge from
-  becoming an unwinnable state. Never charge mana for it. An earlier plan had
+  becoming an unwinnable state. Never charge mana for it. It hits **everything
+  inside its 75px circle**, not just the nearest target — the range was cut 15%
+  when that changed, so walking into a group is what makes it pay. An earlier plan had
   the melee deleted; that was reversed. `docs/rewards.md` and
   `docs/spell-proposals.md` carry banners saying so — do not act on their
   deletion lists.

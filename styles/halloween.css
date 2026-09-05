@@ -3,10 +3,11 @@
  * src/config/settings.js) and is scaled by CSS to fill as much of the viewport
  * as its 4:3 ratio allows.
  *
- * The width formula is what makes the vertical space count: the canvas is as
- * wide as it can be *without* its derived height overflowing the viewport, so
- * on a wide screen it ends up height-limited rather than capped at some fixed
- * pixel width.
+ * The 1900px term in the width formula pins it to 1:1 wherever there is room,
+ * so one canvas pixel is one screen pixel and a measurement taken in an image
+ * editor matches the constants in settings.js. The other terms only take over
+ * on a screen too small for that, shrinking the canvas instead of overflowing.
+ * Leaving grey around the board is deliberate.
  *
  * Scaling the canvas in CSS only works because PointerTracker.toCanvasPoint()
  * multiplies mouse coordinates back into the internal resolution. Do not
@@ -43,8 +44,8 @@ body {
 #gameCanvas {
   aspect-ratio: 19 / 12;
   /* Fallback for browsers without dvh. */
-  width: min(100%, calc((100vh - (2 * var(--frame))) * 19 / 12));
-  width: min(100%, calc((100dvh - (2 * var(--frame))) * 19 / 12));
+  width: min(1900px, 100%, calc((100vh - (2 * var(--frame))) * 19 / 12));
+  width: min(1900px, 100%, calc((100dvh - (2 * var(--frame))) * 19 / 12));
   height: auto;
   display: block;
   border: 3px solid var(--canvas-border);

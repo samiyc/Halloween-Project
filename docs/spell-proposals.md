@@ -38,9 +38,11 @@ de ce que le jeu est déjà.
 C'est la règle la plus importante. La souris est le cœur du jeu ; le jour où une
 touche fait le même travail sans tracer, la souris devient décorative.
 
-La mêlée automatique est la seule exception, et elle se paie cher : mono-cible,
-55 px de portée, une fois toutes les 1,5 s. Elle achète le droit d'ignorer le
-symbole en échange d'un déplacement physique.
+La mêlée automatique est la seule exception, et elle se paie cher : un cercle de
+75 px seulement, une fois toutes les 1,5 s. Elle achète le droit d'ignorer le
+symbole en échange d'un déplacement physique. (Elle était mono-cible quand ce
+document a été écrit ; elle frappe désormais tout le cercle, et sa portée a été
+resserrée d'autant.)
 
 Un bon sort au clavier fait donc l'une de ces trois choses — **gagner du temps**,
 **réorganiser le plateau**, ou **amplifier le prochain geste** — mais pas
@@ -108,7 +110,7 @@ Ouvre une fenêtre pour tracer une séquence longue tranquillement. S'accorde av
 une règle déjà présente — les ennemis à longue séquence sont déjà plus lents —
 en la poussant à l'extrême ponctuellement.
 
-C'est aussi le contre naturel de l'ennemi `⚡` proposé plus bas.
+C'est aussi le contre naturel de l'ennemi `↯` proposé plus bas.
 
 ### `R` — Nova runique
 
@@ -224,10 +226,10 @@ probablement plus satisfaisante.
 
 ## D. Idées liées aux ennemis rares
 
-Les glyphes `⚡` et `@` existent déjà. Leur donner un comportement propre leur
+Les glyphes `↯` et `@` existent déjà. Leur donner un comportement propre leur
 donnerait une raison d'être au-delà d'un tracé plus difficile.
 
-**L'ennemi `⚡` — instable.** Mélange sa séquence restante toutes les 4 s. On ne
+**L'ennemi `↯` — instable.** Mélange sa séquence restante toutes les 4 s. On ne
 peut donc pas planifier une suite de gestes contre lui : soit on l'achève vite,
 soit on le fige (`E`). Donne au givre un rôle qui n'est pas seulement défensif.
 
