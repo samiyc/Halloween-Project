@@ -61,7 +61,9 @@ geste reconnu est facturé **même s'il ne touche rien**, ce qui récompense la
 précision. La mêlée, elle, reste gratuite. Une **orbe jaune** tombe toutes les
 15-20 s et offre un sort tiré au hasard parmi quatre. Quand le sort en réserve
 couvre une zone — le Givre — son rayon s'affiche en pointillés autour du
-personnage, pour voir qui sera touché avant de le dépenser.
+personnage, pour voir qui sera touché avant de le dépenser. Chaque sort a sa
+propre couleur — orange, cyan, magenta, vert — reprise par la bordure et le nom
+dans l'emplacement, pour l'identifier sans le lire.
 
 Six gestes existent : trait horizontal `_`, trait vertical `|`, chevron bas `V`,
 chevron haut `Ʌ`, éclair `↯` et spirale `@`. Les deux derniers n'apparaissent

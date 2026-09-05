@@ -215,6 +215,13 @@ Implemented. `docs/mana-and-spells.md` holds the reasoning and the measurements.
   `Renderer.drawSpellRange()` draws a dashed circle while the spell sits in the
   slot, so you can see who is caught before spending it. Casting empties the
   slot, which clears the preview on its own.
+- **`SPELL_COLORS` is the single source for every spell colour.** The slot border
+  and name, the buff halos and the frozen-enemy tint all derive from it, so the
+  ring you get after casting cannot contradict the slot you just looked at.
+  The point is identifying the held spell without reading it, which needs hues
+  that are actually far apart: the obvious picks (frost tint, old Célérité halo,
+  mana blue) sat within 20 degrees — three cyans. A test enforces 45 degrees
+  minimum between any two.
 - **Spell distances are world-space and must scale with the world.** Givre's
   radius was left at 200 through the x1.6 pass and quietly fell to 2.7x the melee
   reach instead of ~4x; it is 320 now, and a test guards the ratio.

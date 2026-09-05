@@ -225,10 +225,10 @@ dépenser de la mana pour en gagner.
 
 | Sort | Effet | Durée | Signal visuel |
 | --- | --- | --- | --- |
-| **Frénésie** | vitesse d'attaque mêlée ×1,5 — cooldown 1500 → 1000 ms | 8 s | halo **orange** sur le héros |
-| **Givre** | ennemis dans un rayon de **320 px** ralentis ×0,5 | 8 s | **cercle en pointillés** tant qu'il est en réserve, puis ennemis touchés en **bleu clair** |
-| **Célérité** | vitesse de déplacement ×1,5 — 4 → 6 px/frame | 8 s | halo **cyan** sur le héros |
-| **Grande potion** | +50 pts de mana | instantané | flash de la jauge |
+| **Frénésie** | vitesse d'attaque mêlée ×1,5 — cooldown 1500 → 1000 ms | 8 s | **orange** : emplacement + halo |
+| **Givre** | ennemis dans un rayon de **320 px** ralentis ×0,5 | 8 s | **cyan** : emplacement, cercle en pointillés, ennemis gelés |
+| **Célérité** | vitesse de déplacement ×1,5 — 4 → 6 px/frame | 8 s | **magenta** : emplacement + halo |
+| **Grande potion** | +50 pts de mana | instantané | **vert** : emplacement |
 
 Rayon du givre : **320 px**, soit un peu plus de quatre fois la portée de mêlée
 (75 px) — un vrai outil de zone, pas un doublon.
@@ -246,18 +246,43 @@ lancement, puisque l'emplacement se vide.
 La potion à +50 représente la moitié de la jauge, soit 5 sorts communs. C'est
 volontairement fort : elle doit rester un tirage qu'on est content d'avoir.
 
-### ⚠️ Le vert est déjà pris
+### Le code couleur
+
+**Une couleur par sort**, déclarée une seule fois dans `SPELL_COLORS` :
+
+| Sort | Couleur | Teinte | Où elle apparaît |
+| --- | --- | --- | --- |
+| Frénésie | `#FF6B35` orange | 16° | emplacement, halo |
+| Grande potion | `#5FE38A` vert | 140° | emplacement |
+| Givre | `#7FD4FF` cyan | 200° | emplacement, cercle de portée, ennemis gelés |
+| Célérité | `#FF5FD2` magenta | 317° | emplacement, halo |
+
+L'objectif est d'identifier le sort en réserve **sans lire son nom**. Ça impose
+que les teintes soient franchement écartées, et le premier jet ne tenait pas :
+en réutilisant la teinte des ennemis gelés, l'ancien halo de Célérité et le bleu
+de la jauge de mana, on obtenait **trois cyans à moins de 20° les uns des
+autres**. Célérité est passée en magenta et la potion en vert ; l'écart minimal
+est maintenant de **59°**, et un test le vérifie.
+
+Tout est **dérivé** de `SPELL_COLORS` — les halos, la teinte des ennemis gelés,
+le cercle de prévisualisation. L'anneau obtenu après lancement ne peut donc pas
+contredire la couleur qu'on venait de voir dans l'emplacement.
+
+Dans l'encadré, seul le **nom** est coloré ; les deux lignes en dessous restent
+grises. Tout colorer aplatirait la hiérarchie alors que c'est le nom qui porte
+l'identification.
+
+### ⚠️ Le vert du héros n'est pas celui de la potion
 
 Le héros est **déjà vert** (`PLAYER.color = "#3FD35F"`). Un buff de déplacement
-« vert » serait donc invisible — c'est le seul point de la proposition initiale
-qui ne peut pas fonctionner tel quel.
+rendu par un changement de teinte verte serait donc invisible sur lui.
 
-Solution proposée : **le remplissage porte l'identité, le contour porte l'état.**
+Solution : **le remplissage porte l'identité, le contour porte l'état.**
 
 ```
    remplissage vert  = c'est le héros, toujours
    halo orange       = Frénésie active
-   halo cyan         = Célérité active
+   halo magenta      = Célérité active
    deux halos        = les deux, en anneaux concentriques
 ```
 
@@ -265,6 +290,9 @@ Ce découplage règle du même coup un problème que le changement de teinte ne 
 pas exprimer : **deux buffs simultanés**. Les sorts durent 8 s et l'orbe tombe
 toutes les 15-20 s, donc le recouvrement est rare mais parfaitement possible —
 et une couleur de remplissage unique serait alors obligée d'en cacher un.
+
+Le vert de la potion (`#5FE38A`) ne pose pas ce problème : il n'apparaît que
+dans le bandeau, jamais sur le personnage.
 
 ### Questions ouvertes
 

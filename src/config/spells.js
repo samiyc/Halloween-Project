@@ -71,22 +71,49 @@ export function spellRangeOf(spellId) {
 }
 
 /**
- * Buffs that live on the player and need a visible halo.
+ * One colour per spell, so the slot is identifiable without reading it.
  *
- * The fill colour stays the player's identity green — a "green speed buff"
- * would be invisible on a green square — so buff state is carried by a ring
- * instead. That also lets two buffs show at once, which a single fill colour
- * cannot express.
+ * The hues are deliberately spread around the wheel — a test enforces at least
+ * 45 degrees between any two. The obvious choices did not survive that: the
+ * frost tint, the old Célérité halo and the mana blue sat within 20 degrees of
+ * each other, three near-identical cyans. Célérité moved to magenta and the
+ * potion to green, which is what makes a glance enough.
+ *
+ * Two ties were worth keeping and did not move: Frénésie stays the orange of
+ * its own halo, and Givre stays the blue that frozen enemies and its preview
+ * circle already use.
  */
-export const BUFF_HALOS = Object.freeze({
+export const SPELL_COLORS = Object.freeze({
   frenzy: "#FF6B35",
-  haste: "#4FE3FF",
+  frost: "#7FD4FF",
+  haste: "#FF5FD2",
+  potion: "#5FE38A",
 });
 
 /**
- * What a slowed enemy is tinted with.
+ * @param {SpellId|string|null} spellId
+ * @returns {string|null}
+ */
+export function spellColorOf(spellId) {
+  return SPELL_COLORS[spellId] ?? null;
+}
+
+/**
+ * Buffs that live on the player and need a visible halo.
+ *
+ * Derived from `SPELL_COLORS` rather than written out, so the ring you get
+ * after casting can never disagree with the colour that was in the slot.
+ */
+export const BUFF_HALOS = Object.freeze({
+  frenzy: SPELL_COLORS.frenzy,
+  haste: SPELL_COLORS.haste,
+});
+
+/**
+ * What a slowed enemy is tinted with: the Givre colour itself, so the slot, the
+ * preview circle and the frozen enemies all say the same thing.
  *
  * Lives here rather than in `render/palette.js` because `Enemy.displayColor`
  * needs it, and `entities/` must never import from `render/`.
  */
-export const FROST_ENEMY_COLOR = "#7FD4FF";
+export const FROST_ENEMY_COLOR = SPELL_COLORS.frost;

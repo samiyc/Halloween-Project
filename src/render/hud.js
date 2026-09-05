@@ -1,7 +1,7 @@
 import { ALL_GLYPHS } from "../config/glyphs.js";
 import { MANA } from "../config/mana.js";
 import { SIDEBAR } from "../config/settings.js";
-import { SPELLS } from "../config/spells.js";
+import { SPELLS, spellColorOf } from "../config/spells.js";
 import { END_REASON, GAME_STATUS } from "../game/game.js";
 import { FONTS, PALETTE } from "./palette.js";
 
@@ -71,11 +71,14 @@ export class Hud {
     const { ctx } = this;
     const spell = heldSpell ? SPELLS[heldSpell] : null;
     const width = SIDEBAR.width - 2 * PAD;
+    // Each spell has its own colour, so which one is held reads from across the
+    // screen without stopping to parse the name.
+    const color = spellColorOf(heldSpell) ?? PALETTE.slotEmpty;
 
     // Sized for three lines of the x1.6 fonts plus descenders. At 84 the last
     // baseline sat on the border and the text was clipped by its own box.
-    ctx.strokeStyle = spell ? PALETTE.slotReady : PALETTE.slotEmpty;
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = spell ? 3 : 2;
     ctx.strokeRect(PAD, PAD, width, 114);
 
     ctx.textAlign = "left";
@@ -85,9 +88,11 @@ export class Hud {
       ctx.fillText("Aucun sort", PAD + 16, PAD + 64);
       return;
     }
-    ctx.fillStyle = PALETTE.slotReady;
+    ctx.fillStyle = color;
     ctx.font = FONTS.hud;
     ctx.fillText(spell.name, PAD + 16, PAD + 42);
+    // The two lines below stay muted: colouring everything would flatten the
+    // hierarchy and the name is what carries the identification.
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
     ctx.fillText(spell.hint, PAD + 16, PAD + 74);

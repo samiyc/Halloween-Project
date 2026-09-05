@@ -1,4 +1,24 @@
 import { SIDEBAR } from "../config/settings.js";
+import { SPELL_COLORS } from "../config/spells.js";
+
+/**
+ * A hex colour at partial opacity.
+ *
+ * Lets a translucent shade be derived from the one that defines it rather than
+ * hand-copied, which is how the preview circle and the frost tint used to drift
+ * apart waiting to happen.
+ *
+ * @param {string} hex
+ * @param {number} alpha
+ * @returns {string}
+ */
+function withAlpha(hex, alpha) {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 /**
  * Every colour and font used on the canvas. Kept apart from `settings.js` so
@@ -29,8 +49,8 @@ export const PALETTE = Object.freeze({
   sidebar: SIDEBAR.color,
   field: "#546872",
   sidebarEdge: "rgba(0, 0, 0, 0.35)",
-  /** Preview of a held spell area. Frost blue, so it reads as the Givre. */
-  spellRange: "rgba(127, 212, 255, 0.55)",
+  /** Preview of a held spell area — the Givre colour itself, so they match. */
+  spellRange: withAlpha(SPELL_COLORS.frost, 0.55),
 });
 
 /** Scaled with the world (x1.6) so text keeps its weight against the entities. */

@@ -3,7 +3,15 @@ import { describe, it } from "node:test";
 
 import { MANA } from "../src/config/mana.js";
 import { PLAYER, TIME } from "../src/config/settings.js";
-import { BUFF_HALOS, SPELLS, SPELL_IDS, spellRangeOf } from "../src/config/spells.js";
+import {
+  BUFF_HALOS,
+  FROST_ENEMY_COLOR,
+  SPELLS,
+  SPELL_COLORS,
+  SPELL_IDS,
+  spellColorOf,
+  spellRangeOf,
+} from "../src/config/spells.js";
 import { Enemy } from "../src/entities/enemy.js";
 import { Player } from "../src/entities/player.js";
 import { EffectTracker } from "../src/game/effects.js";
@@ -221,6 +229,71 @@ describe("spellbook", () => {
     game.boss.y = game.player.y;
     applyFrost(game);
     assert.equal(game.boss.slowRemainingMs, undefined);
+  });
+});
+
+/**
+ * Hue of a `#rrggbb` colour, in degrees.
+ * @param {string} hex
+ * @returns {number}
+ */
+function hueOf(hex) {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(value >> 16) & 255, (value >> 8) & 255, value & 255].map((c) => c / 255);
+  const max = Math.max(r, g, b);
+  const span = max - Math.min(r, g, b);
+  if (span === 0) return 0;
+
+  let sector = (g - b) / span;
+  if (max === g) sector = (b - r) / span + 2;
+  if (max === b) sector = (r - g) / span + 4;
+  return ((sector * 60) % 360 + 360) % 360;
+}
+
+/**
+ * Shortest distance between two hues, in degrees.
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
+ */
+function hueGap(a, b) {
+  const raw = Math.abs(a - b);
+  return Math.min(raw, 360 - raw);
+}
+
+describe("spell colours", () => {
+  it("gives every spell a colour", () => {
+    for (const id of SPELL_IDS) {
+      assert.match(spellColorOf(id) ?? "", /^#[0-9A-Fa-f]{6}$/, `no colour for "${id}"`);
+    }
+    assert.equal(spellColorOf(null), null, "an empty slot has no colour of its own");
+    assert.equal(spellColorOf("nope"), null);
+  });
+
+  it("keeps the hues far enough apart to tell at a glance", () => {
+    // The point of the whole thing: identifying the held spell without reading
+    // it. The first attempt reused the frost tint, the Célérité halo and the
+    // mana blue, which sat within 20 degrees of each other — three cyans.
+    const entries = SPELL_IDS.map((id) => [id, hueOf(SPELL_COLORS[id])]);
+
+    for (const [idA, hueA] of entries) {
+      for (const [idB, hueB] of entries) {
+        if (idA >= idB) continue;
+        const gap = hueGap(hueA, hueB);
+        assert.ok(gap >= 45, `"${idA}" and "${idB}" are only ${Math.round(gap)} degrees apart`);
+      }
+    }
+  });
+
+  it("matches each halo to the colour shown in the slot", () => {
+    // Otherwise the ring you get after casting contradicts what you just saw.
+    for (const [id, halo] of Object.entries(BUFF_HALOS)) {
+      assert.equal(halo, spellColorOf(id), `the "${id}" halo drifted from its slot colour`);
+    }
+  });
+
+  it("tints frozen enemies with the Givre colour itself", () => {
+    assert.equal(FROST_ENEMY_COLOR, SPELL_COLORS.frost);
   });
 });
 
