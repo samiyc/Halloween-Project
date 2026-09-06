@@ -19,7 +19,7 @@ node --test --test-name-pattern="mêlée"         # un test par son nom
 
 ### Ce qui est couvert
 
-**73 tests, 100 % des lignes** de tous les modules de logique.
+**312 tests, 100 % des lignes** de tous les modules de logique.
 
 | Fichier | Ce qu'il vérifie |
 | --- | --- |
@@ -28,8 +28,10 @@ node --test --test-name-pattern="mêlée"         # un test par son nom
 | `entities.test.js` | Séquences, machine à états du boss, déplacement et cooldown du joueur |
 | `combat.test.js` | Portée de la mêlée, ciblage du plus proche, invincibilité du boss |
 | `game.test.js` | Parties complètes : victoire, défaite, score, spawn, déterminisme |
+| `threat.test.js` | Les repères du bas : qui est suivi, les seuils, un repère par menace |
 
-Ce qui n'est pas testé : `render/`, `engine/keyboard.js`, `engine/pointer.js`,
+Ce qui n'est pas testé : `render/` — hors ses tables pures, `layout.js` et les
+couleurs de `palette.js` —, `engine/keyboard.js`, `engine/pointer.js`,
 `engine/loop.js` et `main.js`. Ce sont les couches qui touchent le DOM ; les
 tester demanderait jsdom pour peu de valeur. Elles sont volontairement minces —
 tout ce qui décide de quelque chose vit ailleurs.

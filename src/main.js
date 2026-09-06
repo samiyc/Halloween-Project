@@ -5,10 +5,12 @@ import { Keyboard } from "./engine/keyboard.js";
 import { GameLoop } from "./engine/loop.js";
 import { PointerTracker } from "./engine/pointer.js";
 import { Session } from "./game/session.js";
+import { threatMarkers } from "./game/threat.js";
 import { Hud } from "./render/hud.js";
 import { buttonAt, gameOverMenuButton, menuButtons, pauseButton } from "./render/layout.js";
 import { drawMenu } from "./render/menu.js";
 import { Renderer } from "./render/renderer.js";
+import { drawThreatMarkers } from "./render/threat.js";
 import { drawBeam, drawBeamCharge, drawProjectiles, drawTurret } from "./render/turret.js";
 
 /**
@@ -185,6 +187,9 @@ class App {
     renderer.drawBuffHalos(game.player);
     renderer.drawPlayer(game.player, game.lastMeleeTargets.length > 0);
     renderer.drawStroke(this.pointer.currentPath());
+    // Last, so nothing can cover them. Drawn first, the boss hid its own marker
+    // completely at the moment it mattered: its 160px body sits on the bottom line.
+    drawThreatMarkers(renderer.ctx, threatMarkers(game.threats, game.bounds.height));
   }
 
   /**

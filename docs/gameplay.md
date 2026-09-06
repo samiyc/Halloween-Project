@@ -67,10 +67,56 @@ Un ennemi gelé par Givre flashe aussi, et **revient au bleu givre, pas au gris*
 `Enemy` redéfinit `baseColor` et non `displayColor`, pour que les deux états se
 composent au lieu de s'écraser.
 
+## Les repères de la ligne du bas
+
+La façon la plus bête de perdre : un ennemi à longue séquence descend lentement
+pendant que l'attention est ailleurs, franchit la ligne du bas, et la partie
+s'arrête sans qu'on l'ait vu venir. Le boss a exactement le même défaut — il
+descend à 0,25 px/frame pendant qu'on regarde les carrés gris.
+
+Un **triangle** est donc posé sur la ligne du bas, aligné horizontalement avec la
+menace qu'il annonce, et coloré selon sa progression :
+
+| Progression | Couleur | Combien de repères |
+| --- | --- | --- |
+| < 60 % | gris translucide | un seul, sur la menace la plus basse |
+| 60 % → 80 % | jaune | un par menace au-delà de 60 % |
+| > 80 % | rouge | idem |
+
+Six décisions valent d'être notées :
+
+- **Au-delà du seuil jaune, chaque menace a son propre repère.** Deux ennemis à
+  quelques pixels l'un de l'autre se partageaient un seul triangle : le second
+  restait invisible jusqu'à ce que le premier soit réglé, ce qui est exactement
+  la surprise que le repère existe pour éviter. `threatMarkers()` renvoie donc
+  une liste, pas une menace.
+- **En dessous du seuil, un seul repère gris**, sur la menace la plus basse. Rien
+  n'est urgent : un rappel discret de l'état du bas du terrain suffit, un
+  triangle sous chaque ennemi ne serait que du bruit.
+- **Le boss compte comme une menace.** `Game.threats` vaut
+  `[...enemies, boss]` : les deux font perdre en franchissant la même ligne, et
+  le boss est celui qu'on oublie. Il obtient donc un repère comme les autres.
+- **La progression se mesure sur le bord *haut*, pas sur le bas du carré.**
+  C'est exactement la grandeur que compare `hasEscaped()` (`y > fieldHeight`) :
+  100 % est donc la frame où la partie est perdue, ni avant ni après. Mesurer le
+  bord bas ferait virer au rouge à des distances différentes pour un ennemi de
+  40 px et un boss de 160.
+- **Ils sont dessinés en dernier**, après le joueur et le tracé en cours. Dessiné
+  en premier, le corps du boss recouvrait entièrement son propre repère au moment
+  précis où il servait. Un liseré sombre les garde lisibles sur l'orange du boss
+  comme sur le terrain, et la taille (33 x 21 px) a été augmentée d'une moitié
+  après un premier essai qu'on ne voyait pas.
+- **Toutes les difficultés.** Rien dans le chemin ne lit `game.rules` : ce n'est
+  pas une aide qu'on retire en Difficile, c'est de la lisibilité.
+
+Les repères informent sans jouer à la place du joueur : ils donnent une position
+en X et une urgence, jamais la séquence à tracer — la souris reste le cœur du jeu.
+
 ## Victoire et défaite
 
 - **Gagné** quand le boss termine sa dernière retraite sans vie restante.
-- **Perdu** dès qu'une entité franchit le bas du canvas — ennemi ou boss.
+- **Perdu** dès qu'une entité franchit le bas du canvas — ennemi ou boss. Le
+  repère décrit plus haut existe précisément pour que ça ne surprenne pas.
 - **Perdu** aussi quand la barre de vie se vide, en Difficile uniquement : c'est
   la tourelle du boss qui l'entame. Voir [boss-patterns.md](boss-patterns.md).
 
@@ -221,6 +267,8 @@ aussi plus de temps.
 | --- | --- |
 | `HIT_FLASH.durationMs` | 100 — assez court pour que deux coups ne se confondent pas |
 | `HIT_FLASH.color` | `#F2F6F8`, blanc cassé |
+| `THREAT.warnRatio` | 0,60 — jaune, **et** seuil d'apparition d'un repère par menace |
+| `THREAT.dangerRatio` | 0,80 — puis rouge |
 
 ### Tourelle du boss (Difficile)
 

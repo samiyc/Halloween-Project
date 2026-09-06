@@ -34,10 +34,10 @@ entière se déroule dans un test unitaire.
 | `config/` | Glyphes et réglages. Aucune logique. | non |
 | `tools/` | Générateur aléatoire injectable. | non |
 | `entities/` | `Entity`, `Enemy`, `Boss`, `Player` : état + comportement. | non |
-| `game/` | `Game` (orchestration), `combat`, `spawner`. | non |
+| `game/` | `Game` (orchestration), `combat`, `spawner`, `threat`. | non |
 | `engine/gesture/` | Géométrie pure et reconnaissance. | non |
 | `engine/` (racine) | `GameLoop`, `Keyboard`, `PointerTracker`. | oui — événements |
-| `render/` | `Renderer`, `Hud`, `palette`. | oui — contexte 2D |
+| `render/` | `Renderer`, `Hud`, `palette`, `turret`, `threat`. | oui — contexte 2D |
 | `main.js` | Câblage. | oui |
 
 Les dépendances ne vont que vers le bas. `entities/` n'importe jamais
@@ -55,7 +55,8 @@ GameLoop (rAF)
                   │     ├─ Spawner.tick()
                   │     └─ settleEndConditions()  victoire / défaite, une fois
                   └─ App.render()
-                        ├─ Renderer  entités, joueur, tracé en cours
+                        ├─ Renderer  entités, joueur, tracé en cours,
+                        │            puis les repères de menace, par-dessus tout
                         └─ Hud       score, cooldown, légende, écran de fin
 ```
 

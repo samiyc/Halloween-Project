@@ -116,6 +116,17 @@ export class Game {
   }
 
   /**
+   * Everything whose crossing of the bottom line ends the run.
+   *
+   * The set the bottom-line marker points into. It is the boss as well as the
+   * enemies: losing to the boss is the easiest loss to miss, since it descends
+   * at a quarter of a pixel a frame while attention is on the squares.
+   */
+  get threats() {
+    return [...this.enemies, this.boss];
+  }
+
+  /**
    * Advances one frame.
    * @param {number} deltaMs
    * @param {{x: number, y: number}} moveDirection

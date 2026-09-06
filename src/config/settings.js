@@ -147,6 +147,29 @@ export const HIT_FLASH = Object.freeze({
   color: "#F2F6F8",
 });
 
+/**
+ * The marker that keeps the lowest threat in sight.
+ *
+ * A slow enemy crossing the bottom line while attention is elsewhere is the
+ * cheapest way to lose a run. The marker sits on that line, aligned with
+ * whatever is closest to crossing it, and colours by how close that is.
+ *
+ * The ratios are fractions of the field height measured on the **top** edge —
+ * the same quantity `hasEscaped()` compares, so 1 is exactly the frame the run
+ * is lost.
+ */
+export const THREAT = Object.freeze({
+  /**
+   * Past this fraction of the descent, the marker turns amber — and every
+   * threat past it gets a marker of its own. It is a threshold of attention,
+   * not only a colour: below it the board shows a single grey marker on the
+   * lowest threat, above it each one is announced separately.
+   */
+  warnRatio: 0.6,
+  /** …and past this one, red. */
+  dangerRatio: 0.8,
+});
+
 export const SPAWN = Object.freeze({
   /** Chance per 60 Hz frame that an enemy appears. */
   chancePerFrame: 0.015,

@@ -39,6 +39,19 @@ export const PALETTE = Object.freeze({
   menuBackdrop: "#2F373B",
 });
 
+/**
+ * The bottom-line marker, by threat level.
+ *
+ * Keyed by what `threatLevelOf()` returns, so a level cannot exist without a
+ * colour. Calm is deliberately dim — the marker is there to be found when it
+ * changes, not to compete with the board the rest of the time.
+ */
+export const THREAT_COLORS = Object.freeze({
+  calm: "rgba(214, 222, 226, 0.45)",
+  warn: "#FFD447",
+  danger: "#FF5B4A",
+});
+
 /** Scaled with the world (x1.6) so text keeps its weight against the entities. */
 export const FONTS = Object.freeze({
   sequence: "26px Arial",

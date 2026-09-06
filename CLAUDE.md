@@ -52,10 +52,11 @@ src/
              plus Turret and Projectile, which extend nothing
   game/      session.js (menu/pause), game.js (orchestrator), combat.js,
              spawner.js, gauge.js, collection.js, pickup-spawner.js,
-             effects.js, spellbook.js, boss-attacks.js
+             effects.js, spellbook.js, boss-attacks.js, threat.js
   engine/    loop.js, keyboard.js, pointer.js, gesture/{geometry,recognizer}.js
-  render/    renderer.js, hud.js, menu.js, gauges.js, palette.js — 2D-context
-             code, plus layout.js which is pure geometry and has no ctx
+  render/    renderer.js, hud.js, menu.js, gauges.js, palette.js, turret.js,
+             threat.js — 2D-context code, plus layout.js which is pure geometry
+             and has no ctx
 ```
 
 Dependencies only point downward: `entities/` never imports `render/`. Colour
@@ -370,6 +371,29 @@ Losing a symbol lights the square to `HIT_FLASH.color` and fades it back over
 A flash is invisible in a screenshot taken through browser automation unless the
 loop is stopped first (`app.loop.stop()`), then a single `app.frame(0)` drawn:
 100 ms is six rAF frames, long gone by the time the screenshot lands.
+
+### The threat markers
+
+Triangles sit on the bottom line, aligned with what is closest to crossing it:
+grey below 60% of the descent, amber to 80%, red past it (`THREAT` in
+`settings.js`, colours in `THREAT_COLORS`). On every difficulty — nothing in the
+path reads `game.rules`. `docs/gameplay.md` holds the reasoning.
+
+- **`threatMarkers()` in `game/threat.js` is the entry point**, pure, fed
+  `Game.threats` — `[...enemies, boss]`: both end the run by crossing the same
+  line, and the boss is the one that gets forgotten at 0.25px/frame.
+- **`warnRatio` is a threshold of attention, not just a colour.** Past it *every*
+  threat gets its own marker; below it the board falls back to the single grey
+  marker of `lowestThreat()`. Two enemies a few pixels apart shared one marker
+  before, so the second was invisible — the exact surprise this exists to stop.
+- **Progress is `y / fieldHeight`, the top edge** — exactly what `hasEscaped()`
+  compares, so 1 is the frame the run is lost. Measuring the bottom edge would
+  make a 40px enemy and a 160px boss turn red at different distances.
+- **Drawn last in `drawBoard()`, and inside `inField()`.** Drawn first, the boss
+  body covered its own marker entirely at the one moment it mattered; a dark rim
+  is what keeps a red one readable on the boss orange. Being inside `inField()`
+  is what puts a marker under its enemy rather than 300px away — the offset trap
+  again, and again invisible to a unit test.
 
 `Keyboard.takePresses()` is the hook for key-driven abilities.
 
