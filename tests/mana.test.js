@@ -5,7 +5,7 @@ import { GLYPHS } from "../src/config/glyphs.js";
 import { MANA, castCost } from "../src/config/mana.js";
 import { MANA_ORB, SPELL_ORB } from "../src/config/pickups.js";
 import { ENEMY, SPAWN, TIME } from "../src/config/settings.js";
-import { ManaPool } from "../src/game/mana.js";
+import { Gauge } from "../src/game/gauge.js";
 
 const FRAME = TIME.referenceFrameMs;
 
@@ -47,13 +47,13 @@ describe("castCost", () => {
   });
 });
 
-describe("ManaPool", () => {
+describe("Gauge", () => {
   it("starts at the configured value, not a hard-coded one", () => {
     // This test used to assert 0 because the design said "starts empty".
     // Raising MANA.start to 20 broke it, which is the wrong kind of failure:
     // it was pinning a tunable instead of an invariant. It now reads the
     // config, and only asserts what must hold whatever the value is.
-    const pool = new ManaPool();
+    const pool = new Gauge();
     assert.equal(pool.value, MANA.start);
     assert.ok(MANA.start < MANA.max, "a full starting gauge would defeat the point");
     assert.ok(
@@ -63,7 +63,7 @@ describe("ManaPool", () => {
   });
 
   it("spends all or nothing", () => {
-    const pool = new ManaPool();
+    const pool = new Gauge();
     pool.value = 0;
     pool.gain(15);
 
@@ -75,14 +75,14 @@ describe("ManaPool", () => {
   });
 
   it("never exceeds its maximum", () => {
-    const pool = new ManaPool();
+    const pool = new Gauge();
     pool.gain(1000);
     assert.equal(pool.value, MANA.max);
     assert.equal(pool.ratio, 1);
   });
 
   it("ignores non-positive gains", () => {
-    const pool = new ManaPool();
+    const pool = new Gauge();
     pool.value = 0;
     pool.gain(10);
     pool.gain(-5);
@@ -91,7 +91,7 @@ describe("ManaPool", () => {
   });
 
   it("regenerates at the configured rate", () => {
-    const pool = new ManaPool();
+    const pool = new Gauge();
     pool.value = 0;
     // One second of 60Hz frames.
     for (let frame = 0; frame < 60; frame += 1) pool.regenerate(FRAME);
@@ -101,7 +101,7 @@ describe("ManaPool", () => {
   it("does not refill from one long stalled frame", () => {
     // The bug already made once on the melee cooldown: an unclamped delta after
     // a tab switch hands you seconds of regeneration in a single step.
-    const pool = new ManaPool();
+    const pool = new Gauge();
     pool.value = 0;
     pool.regenerate(60_000);
     const maxPossible = (MANA.regenPerSecond * TIME.maxFrameMs) / 1000;
@@ -153,8 +153,12 @@ describe("the economy holds together", () => {
     );
   });
 
-  it("makes the spell orb slower than a mana orb so it stays reachable", () => {
-    assert.ok(SPELL_ORB.speed < MANA_ORB.speed);
+  it("spaces the spell orb on a real interval", () => {
+    // This used to also assert the spell orb fell slower than a mana orb, on the
+    // grounds that it had to stay reachable. That was a design assumption, and
+    // it was deliberately reversed: the orb is now fast, so the hero has to
+    // commit to it. Only the interval is an invariant.
     assert.ok(SPELL_ORB.everyMsMin < SPELL_ORB.everyMsMax);
+    assert.ok(SPELL_ORB.everyMsMin > 0);
   });
 });

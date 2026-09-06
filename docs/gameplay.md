@@ -1,8 +1,11 @@
 # Règles et réglages
 
-> Ce fichier décrit le jeu **tel qu'il est aujourd'hui**. L'économie de mana, les
-> billes bleues et les sorts aléatoires sont détaillés dans
-> [mana-and-spells.md](mana-and-spells.md), avec les mesures d'équilibrage.
+> Ce fichier décrit le jeu **tel qu'il est aujourd'hui**, au mode **Normal** —
+> celui qui contient tout. Facile en retire des mécaniques, Difficile ajoute une
+> barre de vie : voir [difficulty.md](difficulty.md).
+>
+> L'économie de mana, les billes bleues et les sorts aléatoires sont détaillés
+> dans [mana-and-spells.md](mana-and-spells.md), avec les mesures d'équilibrage.
 
 ## Le double focus
 

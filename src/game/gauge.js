@@ -2,13 +2,18 @@ import { MANA } from "../config/mana.js";
 import { clampDelta } from "../config/settings.js";
 
 /**
- * The mana gauge.
+ * A bounded gauge: mana, and health on Hard.
  *
  * Deliberately dumb: it holds a number, and refuses to go below zero or above
  * `max`. Deciding what a cast costs belongs to `castCost()`; deciding whether a
  * cast happens belongs to `Game`.
+ *
+ * It was called ManaPool while mana was the only gauge. Health is specified as
+ * "symmetric to the mana bar, same dimensions and values", so it is the same
+ * object with a different config rather than a copy — only the name was ever
+ * mana-specific.
  */
-export class ManaPool {
+export class Gauge {
   /** @param {typeof MANA} [rates] */
   constructor(rates = MANA) {
     this.rates = rates;

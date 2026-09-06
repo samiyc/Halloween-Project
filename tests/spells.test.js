@@ -94,7 +94,11 @@ describe("player buffs", () => {
     );
 
     player.startMeleeCooldown();
-    assert.equal(player.meleeCooldownMs, 1000, "1500ms becomes 1000ms");
+    assert.equal(
+      player.meleeCooldownMs,
+      PLAYER.meleeCooldownMs / SPELLS.frenzy.attackSpeedMultiplier,
+      "the cooldown is divided by the multiplier, whatever it is tuned to",
+    );
   });
 
   it("keeps the cooldown ratio inside 0..1 when Frénésie lands mid-cooldown", () => {
@@ -112,8 +116,11 @@ describe("player buffs", () => {
     const player = new Player({ x: 0, y: 0 });
     player.effects.activate(SPELLS.frenzy.id, 8000);
     player.effects.activate(SPELLS.haste.id, 8000);
-    assert.equal(player.effectiveSpeed, PLAYER.speed * 1.5);
-    assert.equal(player.effectiveMeleeCooldownMs, PLAYER.meleeCooldownMs / 1.5);
+    assert.equal(player.effectiveSpeed, PLAYER.speed * SPELLS.haste.moveSpeedMultiplier);
+    assert.equal(
+      player.effectiveMeleeCooldownMs,
+      PLAYER.meleeCooldownMs / SPELLS.frenzy.attackSpeedMultiplier,
+    );
   });
 
   it("ticks its own effects down as it updates", () => {

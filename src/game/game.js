@@ -1,12 +1,14 @@
+import { DEFAULT_DIFFICULTY, rulesOf } from "../config/difficulty.js";
+import { HEALTH } from "../config/health.js";
 import { MANA, castCost } from "../config/mana.js";
-import { FIELD, PLAYER, clampDelta } from "../config/settings.js";
+import { FIELD, PLAYER, SPAWN, clampDelta } from "../config/settings.js";
 import { SPELL_IDS } from "../config/spells.js";
 import { Boss } from "../entities/boss.js";
 import { Player } from "../entities/player.js";
 import { systemRandom } from "../tools/random.js";
 import { collectPickups } from "./collection.js";
 import { resolveGesture, resolveMelee } from "./combat.js";
-import { ManaPool } from "./mana.js";
+import { Gauge } from "./gauge.js";
 import { PickupSpawner } from "./pickup-spawner.js";
 import { Spawner } from "./spawner.js";
 import { applySpell } from "./spellbook.js";
@@ -37,10 +39,17 @@ export class Game {
    * @param {object} [options]
    * @param {{width: number, height: number}} [options.bounds]
    * @param {import("../tools/random.js").Rng} [options.rng]
+   * @param {import("../config/difficulty.js").DifficultyId} [options.difficulty]
    */
-  constructor({ bounds = { width: FIELD.width, height: FIELD.height }, rng = systemRandom } = {}) {
+  constructor({
+    bounds = { width: FIELD.width, height: FIELD.height },
+    rng = systemRandom,
+    difficulty = DEFAULT_DIFFICULTY,
+  } = {}) {
     this.bounds = bounds;
     this.rng = rng;
+    /** Which mechanics exist at all in this run. See config/difficulty.js. */
+    this.rules = rulesOf(difficulty);
     this.reset();
   }
 
@@ -56,9 +65,21 @@ export class Game {
       x: (this.bounds.width - PLAYER.size) / 2,
       y: (this.bounds.height - PLAYER.size) / 2,
     });
-    this.spawner = new Spawner({ bounds: this.bounds, rng: this.rng });
-    this.pickupSpawner = new PickupSpawner({ bounds: this.bounds, rng: this.rng });
-    this.mana = new ManaPool();
+    // Silencing rare enemies also silences the rare glyphs: no purple enemy
+    // means no sequence ever contains a bolt or a spiral.
+    this.spawner = new Spawner({
+      bounds: this.bounds,
+      rng: this.rng,
+      rates: this.rules.rareEnemies ? SPAWN : { ...SPAWN, rareShare: 0 },
+    });
+    this.pickupSpawner = new PickupSpawner({
+      bounds: this.bounds,
+      rng: this.rng,
+      drops: { mana: this.rules.mana, spells: this.rules.spells },
+    });
+    this.mana = new Gauge();
+    /** Hard only. Displayed at full; nothing damages it yet. */
+    this.health = this.rules.health ? new Gauge(HEALTH) : null;
     /** @type {import("../config/spells.js").SpellId|null} The single spell slot. */
     this.heldSpell = null;
     this.status = GAME_STATUS.running;
@@ -85,7 +106,7 @@ export class Game {
 
     this.lastMeleeTargets = [];
     this.manaWarningMs = Math.max(0, this.manaWarningMs - clampDelta(deltaMs));
-    this.mana.regenerate(deltaMs);
+    if (this.rules.mana) this.mana.regenerate(deltaMs);
 
     this.player.update(deltaMs, moveDirection, this.bounds);
     this.advanceBoard(deltaMs);
@@ -158,7 +179,9 @@ export class Game {
   castGesture(glyphId) {
     if (!this.isRunning || glyphId === null) return 0;
 
-    if (!this.mana.spend(castCost(glyphId))) {
+    // Easy has no economy at all: gestures are free, so there is nothing to
+    // refuse and nothing to flash.
+    if (this.rules.mana && !this.mana.spend(castCost(glyphId))) {
       this.manaWarningMs = MANA_WARNING_MS;
       return 0;
     }
@@ -177,7 +200,7 @@ export class Game {
    * @returns {string|null} the spell that fired, or null if the slot was empty
    */
   castSpell() {
-    if (!this.isRunning || this.heldSpell === null) return null;
+    if (!this.rules.spells || !this.isRunning || this.heldSpell === null) return null;
 
     const spellId = this.heldSpell;
     this.heldSpell = null;

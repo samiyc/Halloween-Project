@@ -51,6 +51,10 @@ export const PALETTE = Object.freeze({
   sidebarEdge: "rgba(0, 0, 0, 0.35)",
   /** Preview of a held spell area — the Givre colour itself, so they match. */
   spellRange: withAlpha(SPELL_COLORS.frost, 0.55),
+  /** The health bar on Hard: the mana gauge mirrored, in red. */
+  healthFill: "#E2564B",
+  buttonFill: "rgba(255, 255, 255, 0.05)",
+  menuBackdrop: "#2F373B",
 });
 
 /** Scaled with the world (x1.6) so text keeps its weight against the entities. */

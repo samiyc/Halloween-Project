@@ -61,15 +61,17 @@ export class PointerTracker {
     // this filter it would also start a stroke that the following mouseup
     // would then charge mana for.
     if (event.button !== 0) return;
-    if (!this.isEnabled()) return;
+    // Asked in canvas coordinates, because that is where the HUD buttons live:
+    // a press aiming at one must not also start a gesture.
+    if (!this.isEnabled(this.toCanvasPoint(event))) return;
     this.isDrawing = true;
-    this.path = [this.toCanvasPoint(event)];
+    this.path = [this.toFieldPoint(event)];
   }
 
   /** @param {MouseEvent} event */
   extend(event) {
     if (!this.isDrawing) return;
-    this.path.push(this.toCanvasPoint(event));
+    this.path.push(this.toFieldPoint(event));
   }
 
   finish() {
@@ -86,6 +88,10 @@ export class PointerTracker {
   }
 
   /**
+   * Canvas coordinates: the CSS scale undone, nothing else.
+   *
+   * This is the space the sidebars and every HUD button live in.
+   *
    * @param {MouseEvent} event
    * @returns {Point}
    */
@@ -93,13 +99,27 @@ export class PointerTracker {
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = rect.width === 0 ? 1 : this.canvas.width / rect.width;
     const scaleY = rect.height === 0 ? 1 : this.canvas.height / rect.height;
-    // Two corrections, in order: CSS scale back to canvas pixels, then the
-    // sidebar offset so the stroke lands in the same coordinates as entities.
-    // Recognition itself is translation-invariant, so getting the offset wrong
-    // would not break gestures — it would only draw the trail 300px off.
     return {
-      x: (event.clientX - rect.left) * scaleX - FIELD.x,
-      y: (event.clientY - rect.top) * scaleY - FIELD.y,
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY,
     };
+  }
+
+  /**
+   * Field coordinates: canvas coordinates minus the left sidebar.
+   *
+   * This is the space entities live in, so it is what a stroke is recorded in.
+   * The two used to be one function, which was fine while nothing but gestures
+   * read the mouse — the HUD buttons made the conflation untenable.
+   *
+   * Recognition is translation-invariant, so mixing the two up would not break
+   * gestures: the only symptom is a trail drawn 300px from the cursor.
+   *
+   * @param {MouseEvent} event
+   * @returns {Point}
+   */
+  toFieldPoint(event) {
+    const point = this.toCanvasPoint(event);
+    return { x: point.x - FIELD.x, y: point.y - FIELD.y };
   }
 }

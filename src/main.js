@@ -4,8 +4,10 @@ import { recognizeStroke } from "./engine/gesture/recognizer.js";
 import { Keyboard } from "./engine/keyboard.js";
 import { GameLoop } from "./engine/loop.js";
 import { PointerTracker } from "./engine/pointer.js";
-import { Game } from "./game/game.js";
+import { Session } from "./game/session.js";
 import { Hud } from "./render/hud.js";
+import { buttonAt, gameOverMenuButton, menuButtons, pauseButton } from "./render/layout.js";
+import { drawMenu } from "./render/menu.js";
 import { Renderer } from "./render/renderer.js";
 
 /**
@@ -16,17 +18,13 @@ import { Renderer } from "./render/renderer.js";
  * the canvas, and the browser fires a `click` for exactly that. So the screen
  * appeared, armed one second later, and the player's very next stroke restarted
  * the run — which reads as "the game reset itself for no reason".
- *
- * Two changes fix it: a longer pause, and arming `mousedown` instead of
- * `click`. A `click` can be produced by the mouseup of a stroke that started
- * while the game was still running; a mousedown during the game-over screen is
- * always a fresh, deliberate press.
  */
 const RESTART_DELAY_MS = 2500;
 
 /**
  * Wiring only: this is the one module allowed to know about both the DOM and
- * the game. Everything it composes is independently testable.
+ * the game. Everything it composes is independently testable — the navigation
+ * lives in `Session`, the button geometry in `render/layout.js`.
  */
 class App {
   /** @param {HTMLCanvasElement} canvas */
@@ -38,32 +36,31 @@ class App {
     this.canvas = canvas;
     // The board, not the canvas: the sidebars are chrome, and passing the full
     // canvas here would let enemies spawn and fall underneath them.
-    this.game = new Game({ bounds: { width: FIELD.width, height: FIELD.height } });
+    this.session = new Session({ bounds: { width: FIELD.width, height: FIELD.height } });
     this.renderer = new Renderer(ctx);
     this.hud = new Hud(ctx);
     this.keyboard = new Keyboard().attach(globalThis);
     this.pointer = new PointerTracker(canvas, {
       onStrokeComplete: (path) => this.handleStroke(path),
-      isEnabled: () => this.game.isRunning,
+      isEnabled: (point) => this.acceptsGestureAt(point),
     }).attach();
     this.loop = new GameLoop((deltaMs) => this.frame(deltaMs));
     this.gameOverElapsedMs = 0;
-    this.restartArmed = false;
-    this.bindSpellCasting();
+    this.bindPointer();
   }
 
-  /**
-   * The held spell fires on E or on a right click.
-   *
-   * The context menu has to be suppressed or the right click opens it instead,
-   * and PointerTracker ignores non-left buttons so the same click cannot also
-   * start a gesture.
-   */
-  bindSpellCasting() {
+  get game() {
+    return this.session.game;
+  }
+
+  /** True once the game-over screen has been up long enough to dismiss. */
+  get canRestart() {
+    return this.gameOverElapsedMs >= RESTART_DELAY_MS;
+  }
+
+  bindPointer() {
     this.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
-    this.canvas.addEventListener("mousedown", (event) => {
-      if (event.button === 2) this.game.castSpell();
-    });
+    this.canvas.addEventListener("mousedown", (event) => this.handlePress(event));
   }
 
   start() {
@@ -72,32 +69,97 @@ class App {
 
   /** @param {number} deltaMs */
   frame(deltaMs) {
-    // Drained every frame, running or not, so the queue cannot grow unbounded
-    // while the game-over screen is up.
+    // Drained every frame, whichever screen is up, so the queue cannot grow
+    // unbounded while the menu is open.
     const presses = this.keyboard.takePresses();
+    this.session.tick(deltaMs);
+    if (presses.includes("Escape")) this.session.toggleMenu();
 
-    if (this.game.isRunning) {
+    if (this.session.isPlaying && this.game) {
       if (presses.includes("KeyE")) this.game.castSpell();
-      this.game.update(deltaMs, this.keyboard.moveDirection());
-    } else {
-      this.gameOverElapsedMs += deltaMs;
+      // Pausing is simply not calling this: the run freezes where it stands.
+      if (this.game.isRunning) this.game.update(deltaMs, this.keyboard.moveDirection());
+      else this.gameOverElapsedMs += deltaMs;
     }
     this.render();
-    this.armRestartWhenReady();
   }
 
+  // ----------------------------------------------------------------- input --
+
+  /**
+   * Gestures are only drawn on the board, and never by a press that is really
+   * aiming at a button — both listeners see the same mousedown.
+   * @param {{x: number, y: number}} point  Canvas coordinates.
+   * @returns {boolean}
+   */
+  acceptsGestureAt(point) {
+    if (!this.session.isPlaying || !this.game?.isRunning) return false;
+    return !buttonAt([pauseButton()], point);
+  }
+
+  /** @param {MouseEvent} event */
+  handlePress(event) {
+    const point = this.pointer.toCanvasPoint(event);
+    if (event.button === 2) {
+      this.game?.castSpell();
+      return;
+    }
+    if (event.button !== 0) return;
+
+    if (this.session.isPlaying) this.pressWhilePlaying(point);
+    else this.pressInMenu(point);
+  }
+
+  /** @param {{x: number, y: number}} point */
+  pressInMenu(point) {
+    const button = buttonAt(menuButtons(this.session), point);
+    if (!button) return;
+    if (button.id === "resume") this.session.resume();
+    else this.session.start(button.id);
+  }
+
+  /** @param {{x: number, y: number}} point */
+  pressWhilePlaying(point) {
+    if (buttonAt([pauseButton()], point)) {
+      this.session.openMenu();
+      return;
+    }
+    if (this.game?.isRunning || !this.canRestart) return;
+
+    // The Menu button has to win over click-anywhere-to-restart, or pressing it
+    // would relaunch a run instead of opening the menu.
+    if (buttonAt([gameOverMenuButton()], point)) this.session.openMenu();
+    else this.restart();
+  }
+
+  /** @param {readonly {x: number, y: number}[]} path */
+  handleStroke(path) {
+    this.game?.castGesture(recognizeStroke(path));
+  }
+
+  restart() {
+    this.session.start(this.session.difficulty);
+    this.gameOverElapsedMs = 0;
+  }
+
+  // ---------------------------------------------------------------- render --
+
   render() {
-    const { game, renderer } = this;
+    const { renderer } = this;
     renderer.clear();
+
+    if (!this.session.isPlaying || !this.game) {
+      drawMenu(renderer.ctx, this.session);
+      return;
+    }
+
     renderer.drawBackground();
     // Everything that lives in field coordinates goes inside, so the offset is
     // applied once and nothing can spill onto the sidebars.
     renderer.inField(() => this.drawBoard());
-    this.hud.draw(game);
+    this.hud.draw(this.game);
 
-    if (!game.isRunning) {
-      this.hud.drawGameOver(game, this.gameOverElapsedMs >= RESTART_DELAY_MS);
-    }
+    if (!this.game.isRunning) this.hud.drawGameOver(this.game, this.canRestart);
   }
 
   /** Drawn in field coordinates — see `Renderer.inField()`. */
@@ -120,38 +182,6 @@ class App {
     renderer.drawPlayer(game.player, game.lastMeleeTargets.length > 0);
     renderer.drawStroke(this.pointer.currentPath());
   }
-
-  /**
-   * @param {readonly {x: number, y: number}[]} path
-   */
-  handleStroke(path) {
-    this.game.castGesture(recognizeStroke(path));
-  }
-
-  armRestartWhenReady() {
-    if (this.game.isRunning || this.restartArmed) return;
-    if (this.gameOverElapsedMs < RESTART_DELAY_MS) return;
-
-    this.restartArmed = true;
-    // Left button only: a right click is a spell cast, not a restart.
-    const onPress = (event) => {
-      if (event.button !== 0) return;
-      this.canvas.removeEventListener("mousedown", onPress);
-      this.restart();
-    };
-    this.canvas.addEventListener("mousedown", onPress);
-  }
-
-  /**
-   * Restarts in place. The old implementation called `location.reload()`,
-   * which is why no state-reset path existed; `Game.reset()` is now the only
-   * thing needed.
-   */
-  restart() {
-    this.game.reset();
-    this.gameOverElapsedMs = 0;
-    this.restartArmed = false;
-  }
 }
 
 const canvas = document.getElementById("gameCanvas");
@@ -159,9 +189,8 @@ if (canvas instanceof HTMLCanvasElement) {
   const app = new App(canvas);
   app.start();
 
-  // Opt-in inspection hook: load halloween.html?debug and the live game is
-  // reachable from DevTools as `__magicSpell.game` — enemies, boss phase,
-  // score and player state. Off by default so the page exposes nothing.
+  // Opt-in inspection hook: load halloween.html?debug and the live session is
+  // reachable from DevTools as `__magicSpell.session`. Off by default.
   if (new URLSearchParams(globalThis.location?.search).has("debug")) {
     globalThis.__magicSpell = app;
   }

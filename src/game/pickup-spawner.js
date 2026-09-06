@@ -17,9 +17,21 @@ export class PickupSpawner {
    * @param {{width: number, height: number}} [options.bounds]
    * @param {import("../tools/random.js").Rng} [options.rng]
    */
-  constructor({ bounds = { width: 0, height: 0 }, rng = systemRandom } = {}) {
+  /**
+   * @param {object} [options]
+   * @param {{width: number, height: number}} [options.bounds]
+   * @param {import("../tools/random.js").Rng} [options.rng]
+   * @param {{mana?: boolean, spells?: boolean}} [options.drops] Which streams
+   *   run at all. Easy has neither: no economy, so nothing to collect.
+   */
+  constructor({
+    bounds = { width: 0, height: 0 },
+    rng = systemRandom,
+    drops = { mana: true, spells: true },
+  } = {}) {
     this.bounds = bounds;
     this.rng = rng;
+    this.drops = drops;
     this.spellCountdownMs = this.nextSpellDelay();
   }
 
@@ -35,14 +47,16 @@ export class PickupSpawner {
   tick(deltaMs) {
     const dropped = [];
 
-    if (this.rng.chance(MANA_ORB.chancePerFrame * toFrames(deltaMs))) {
+    if (this.drops.mana && this.rng.chance(MANA_ORB.chancePerFrame * toFrames(deltaMs))) {
       dropped.push(this.create(MANA_ORB));
     }
 
+    // The countdown runs either way, so a disabled stream still consumes the
+    // same random draws — two runs on one seed stay comparable across modes.
     this.spellCountdownMs -= clampDelta(deltaMs);
     if (this.spellCountdownMs <= 0) {
       this.spellCountdownMs = this.nextSpellDelay();
-      dropped.push(this.create(SPELL_ORB));
+      if (this.drops.spells) dropped.push(this.create(SPELL_ORB));
     }
 
     return dropped;

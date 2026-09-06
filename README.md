@@ -48,11 +48,19 @@ aucune dépendance runtime).
 
 | Entrée | Effet |
 | --- | --- |
+| **Échap** | Ouvre le menu (la partie se met en pause) et y revient |
 | Souris (glisser) | Lance un geste. **Aucune limite de portée** : touche tout l'écran |
 | `Z` `Q` `S` `D` | Déplace le personnage vert (fonctionne aussi en `W` `A` `S` `D` sur QWERTY, et aux flèches) |
 | — | La mêlée se déclenche **seule** toutes les 1,5 s sur **tous** les ennemis du cercle |
 | `E` ou **clic droit** | Lance le sort en réserve, affiché en haut à gauche |
 | Clic gauche | Recommence la partie une fois l'écran de fin affiché |
+| Bouton « Pause / Menu » | En haut du bandeau droit : même effet qu'Échap |
+
+Le jeu s'ouvre sur un **menu de difficulté** : Facile, Normal, Difficile. Les
+modes n'ajustent aucun chiffre, ils activent les mécaniques une par une —
+Facile n'a ni mana ni sorts ni ennemis rares, Normal est le jeu complet,
+Difficile y ajoute une barre de vie. Détail dans
+[docs/difficulty.md](docs/difficulty.md).
 
 Les gestes coûtent de la **mana** : 8 points, 24 pour l'éclair et la spirale. On
 la ramasse en **billes bleues** avec le personnage ; la jauge monte à 150 et
@@ -98,6 +106,7 @@ renderer translate, le pointeur retranche l'offset.
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Carte des modules, règles de dépendance, comment ajouter une entité |
 | [docs/gestures.md](docs/gestures.md) | Reconnaissance des gestes, seuils, **comment ajouter un geste** |
+| [docs/difficulty.md](docs/difficulty.md) | **Les trois modes**, le menu, la pause |
 | [docs/gameplay.md](docs/gameplay.md) | Règles, cycle du boss, tous les paramètres réglables |
 | [docs/quality.md](docs/quality.md) | Tests et lint : conventions et budget de complexité |
 | [docs/mana-and-spells.md](docs/mana-and-spells.md) | Économie de mana, billes bleues, sorts aléatoires, **et les mesures d'équilibrage** |

@@ -1,8 +1,12 @@
 import { ALL_GLYPHS } from "../config/glyphs.js";
+import { HEALTH } from "../config/health.js";
 import { MANA } from "../config/mana.js";
 import { SIDEBAR } from "../config/settings.js";
 import { SPELLS, spellColorOf } from "../config/spells.js";
 import { END_REASON, GAME_STATUS } from "../game/game.js";
+import { drawVerticalGauge } from "./gauges.js";
+import { gameOverMenuButton, pauseButton } from "./layout.js";
+import { drawButton } from "./menu.js";
 import { FONTS, PALETTE } from "./palette.js";
 
 /** @type {Readonly<Record<string, string>>} */
@@ -14,15 +18,6 @@ const LOSS_MESSAGES = Object.freeze({
 const PAD = 20;
 
 /**
- * The mana gauge, sized off the mockup: a tall vertical bar down the left
- * sidebar, hugging the play area, with its labels to the left of it.
- *
- * It sits on the left rather than the right because that is the edge the eye
- * already returns to for the spell slot and the score.
- */
-const MANA_GAUGE = Object.freeze({ thickness: 18, length: 460 });
-
-/**
  * Everything drawn in the two sidebars, plus the end-of-game overlay.
  *
  * The HUD used to be painted over the board and kept disappearing behind
@@ -30,8 +25,8 @@ const MANA_GAUGE = Object.freeze({ thickness: 18, length: 460 });
  * field, in canvas coordinates — unlike the renderer, which works translated
  * into field space.
  *
- * Layout: the player's own state on the left (spell slot, score, melee), the
- * reference material on the right (glyph legend, mana gauge).
+ * What is shown depends on the difficulty: Easy has no mana and no spells, so
+ * their readouts would only be clutter. `game.rules` decides, not the HUD.
  */
 export class Hud {
   /** @param {CanvasRenderingContext2D} ctx */
@@ -54,29 +49,30 @@ export class Hud {
 
   /** @param {import("../game/game.js").Game} game */
   draw(game) {
-    this.drawSpellSlot(game.heldSpell);
+    const { rules } = game;
+    if (rules.spells) this.drawSpellSlot(game.heldSpell);
     this.drawScore(game.enemiesDefeated);
     this.drawMeleeCooldown(game.player);
-    this.drawManaGauge(game);
-    this.drawGlyphLegend();
+    if (rules.mana) this.drawManaGauge(game);
+
+    drawButton(this.ctx, pauseButton());
+    this.drawGlyphLegend(rules);
+    if (game.health) this.drawHealthGauge(game.health);
   }
 
   // ---------------------------------------------------------------- left ---
 
   /**
-   * The single spell slot, top of the left strip.
+   * The single spell slot, top of the left strip. Each spell colours its own
+   * border and name, so which one is held reads without being read.
    * @param {string|null} heldSpell
    */
   drawSpellSlot(heldSpell) {
     const { ctx } = this;
     const spell = heldSpell ? SPELLS[heldSpell] : null;
     const width = SIDEBAR.width - 2 * PAD;
-    // Each spell has its own colour, so which one is held reads from across the
-    // screen without stopping to parse the name.
     const color = spellColorOf(heldSpell) ?? PALETTE.slotEmpty;
 
-    // Sized for three lines of the x1.6 fonts plus descenders. At 84 the last
-    // baseline sat on the border and the text was clipped by its own box.
     ctx.strokeStyle = color;
     ctx.lineWidth = spell ? 3 : 2;
     ctx.strokeRect(PAD, PAD, width, 114);
@@ -113,14 +109,12 @@ export class Hud {
   }
 
   /**
-   * A bar that fills as the auto-attack recharges, so the 1.5s rhythm is
-   * readable rather than felt.
+   * A bar that fills as the auto-attack recharges, so its rhythm is readable
+   * rather than felt.
    * @param {import("../entities/player.js").Player} player
    */
   drawMeleeCooldown(player) {
     const { ctx } = this;
-    const width = SIDEBAR.width - 2 * PAD;
-    const height = 12;
     const y = 332;
 
     ctx.textAlign = "left";
@@ -129,25 +123,50 @@ export class Hud {
     ctx.fillText("MÊLÉE AUTO", PAD, y - 12);
 
     ctx.fillStyle = PALETTE.cooldownTrack;
-    ctx.fillRect(PAD, y, width, height);
+    ctx.fillRect(PAD, y, SIDEBAR.width - 2 * PAD, 12);
     ctx.fillStyle = PALETTE.cooldownFill;
-    ctx.fillRect(PAD, y, width * (1 - player.meleeChargeRatio), height);
+    ctx.fillRect(PAD, y, (SIDEBAR.width - 2 * PAD) * (1 - player.meleeChargeRatio), 12);
+  }
+
+  /**
+   * The mana gauge. The tick marks what one common gesture costs, so "can I
+   * afford the next stroke" is answered by a glance.
+   * @param {import("../game/game.js").Game} game
+   */
+  drawManaGauge(game) {
+    drawVerticalGauge(this.ctx, {
+      side: "left",
+      ratio: game.mana.ratio,
+      label: "MANA",
+      value: game.mana.value,
+      max: MANA.max,
+      fill: PALETTE.manaFill,
+      alert: game.manaWarningMs > 0,
+      tickAt: MANA.costCommon,
+    });
   }
 
   // --------------------------------------------------------------- right ---
 
-  /** Reminds the player which gesture draws which symbol. */
-  drawGlyphLegend() {
+  /**
+   * Which gesture draws which symbol. Easy never spawns rare enemies, so its
+   * legend stops at the four common glyphs.
+   * @param {import("../config/difficulty.js").DifficultyRules} rules
+   */
+  drawGlyphLegend(rules) {
     const { ctx } = this;
     const x = this.rightX + PAD;
+    const glyphs = rules.rareEnemies
+      ? ALL_GLYPHS
+      : ALL_GLYPHS.filter((glyph) => glyph.rarity === "common");
 
     ctx.textAlign = "left";
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.fillText("GESTES", x, PAD + 20);
+    ctx.fillText("GESTES", x, 140);
 
-    let y = PAD + 66;
-    for (const glyph of ALL_GLYPHS) {
+    let y = 186;
+    for (const glyph of glyphs) {
       ctx.fillStyle = glyph.rarity === "rare" ? PALETTE.rareSequence : PALETTE.text;
       ctx.font = FONTS.sequence;
       ctx.fillText(glyph.symbol, x, y);
@@ -160,56 +179,20 @@ export class Hud {
   }
 
   /**
-   * The vertical mana gauge, anchored bottom-right and filling upward.
-   *
-   * The tick marks what one common gesture costs, so "can I afford the next
-   * stroke" is answered by a glance rather than by reading the number.
-   *
-   * @param {import("../game/game.js").Game} game
+   * The health bar, Hard only: the mana gauge mirrored into the right sidebar.
+   * Nothing damages it yet — the boss attack patterns that would are still to
+   * be designed.
+   * @param {import("../game/gauge.js").Gauge} health
    */
-  drawManaGauge(game) {
-    const { ctx } = this;
-    const { thickness, length } = MANA_GAUGE;
-    // Right-aligned inside the left sidebar, so the bar runs along the edge of
-    // the play area and its labels have the whole strip to their left.
-    const x = SIDEBAR.width - PAD - thickness;
-    const bottom = this.height - PAD;
-    const top = bottom - length;
-
-    ctx.fillStyle = PALETTE.manaTrack;
-    ctx.fillRect(x, top, thickness, length);
-
-    const filled = length * game.mana.ratio;
-    ctx.fillStyle = game.manaWarningMs > 0 ? PALETTE.manaWarning : PALETTE.manaFill;
-    ctx.fillRect(x, bottom - filled, thickness, filled);
-
-    const tickY = bottom - (length * MANA.costCommon) / MANA.max;
-    ctx.fillStyle = PALETTE.text;
-    ctx.fillRect(x, tickY, thickness, 1);
-
-    this.drawManaLabel(game, x, top, bottom);
-  }
-
-  /**
-   * @param {import("../game/game.js").Game} game
-   * @param {number} gaugeX
-   * @param {number} top
-   * @param {number} bottom
-   */
-  drawManaLabel(game, gaugeX, top, bottom) {
-    const { ctx } = this;
-    ctx.textAlign = "right";
-    ctx.fillStyle = PALETTE.textMuted;
-    ctx.font = FONTS.label;
-    ctx.fillText("MANA", gaugeX - 14, top + 16);
-
-    ctx.fillStyle = game.manaWarningMs > 0 ? PALETTE.manaWarning : PALETTE.text;
-    ctx.font = FONTS.subhead;
-    ctx.fillText(String(Math.floor(game.mana.value)), gaugeX - 14, bottom - 30);
-
-    ctx.fillStyle = PALETTE.textMuted;
-    ctx.font = FONTS.label;
-    ctx.fillText(`/ ${MANA.max}`, gaugeX - 14, bottom);
+  drawHealthGauge(health) {
+    drawVerticalGauge(this.ctx, {
+      side: "right",
+      ratio: health.ratio,
+      label: "VIE",
+      value: health.value,
+      max: HEALTH.max,
+      fill: PALETTE.healthFill,
+    });
   }
 
   // ------------------------------------------------------------- overlay ---
@@ -240,6 +223,7 @@ export class Hud {
     ctx.fillText(`Fantômes éliminés : ${game.enemiesDefeated}`, centerX, centerY + 16);
 
     this.drawGameOverFooter(game, canRestart, centerX, centerY);
+    drawButton(ctx, gameOverMenuButton());
   }
 
   /**

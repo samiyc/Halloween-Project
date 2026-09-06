@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { DIFFICULTY_IDS } from "../src/config/difficulty.js";
 import { MANA_ORB, SPELL_ORB } from "../src/config/pickups.js";
 import {
   BOSS,
@@ -12,6 +13,13 @@ import {
   SIDEBAR,
 } from "../src/config/settings.js";
 import { PointerTracker } from "../src/engine/pointer.js";
+import {
+  buttonAt,
+  gameOverMenuButton,
+  hits,
+  menuButtons,
+  pauseButton,
+} from "../src/render/layout.js";
 import { Game } from "../src/game/game.js";
 import { createSeededRandom } from "../src/tools/random.js";
 
@@ -85,11 +93,20 @@ describe("PointerTracker coordinates", () => {
   /** @returns {PointerTracker} */
   const tracker = (canvas) => new PointerTracker(canvas, { onStrokeComplete() {} });
 
-  it("returns field coordinates, not canvas coordinates", () => {
-    // The whole point: the left edge of the board is x = 0 for the game, even
-    // though it sits 300px into the canvas.
+  it("keeps canvas and field coordinates apart", () => {
+    // They used to be one function. The HUD buttons live in canvas space and
+    // entities in field space, so conflating them put a button rect 300px from
+    // where it was drawn.
     const pointer = tracker(fakeCanvas());
-    const atFieldOrigin = pointer.toCanvasPoint({ clientX: FIELD.x, clientY: 0 });
+    const event = { clientX: FIELD.x, clientY: 0 };
+
+    assert.deepEqual(pointer.toCanvasPoint(event), { x: FIELD.x, y: 0 });
+    assert.deepEqual(pointer.toFieldPoint(event), { x: 0, y: 0 });
+  });
+
+  it("puts the board origin at zero in field space", () => {
+    const pointer = tracker(fakeCanvas());
+    const atFieldOrigin = pointer.toFieldPoint({ clientX: FIELD.x, clientY: 0 });
 
     assert.equal(atFieldOrigin.x, 0);
     assert.equal(atFieldOrigin.y, 0);
@@ -97,7 +114,7 @@ describe("PointerTracker coordinates", () => {
 
   it("maps the far corner of the board to its far corner in field space", () => {
     const pointer = tracker(fakeCanvas());
-    const corner = pointer.toCanvasPoint({
+    const corner = pointer.toFieldPoint({
       clientX: FIELD.x + FIELD.width,
       clientY: FIELD.height,
     });
@@ -111,14 +128,14 @@ describe("PointerTracker coordinates", () => {
     // every gesture progressively further off as the window shrinks.
     const scale = 0.5;
     const pointer = tracker(fakeCanvas({ scale }));
-    const point = pointer.toCanvasPoint({ clientX: FIELD.x * scale, clientY: 0 });
+    const point = pointer.toFieldPoint({ clientX: FIELD.x * scale, clientY: 0 });
 
     assert.equal(point.x, 0, "the board origin must stay the origin at any zoom");
   });
 
   it("accounts for the canvas not sitting at the viewport origin", () => {
     const pointer = tracker(fakeCanvas({ left: 40, top: 25 }));
-    const point = pointer.toCanvasPoint({ clientX: 40 + FIELD.x + 100, clientY: 25 + 60 });
+    const point = pointer.toFieldPoint({ clientX: 40 + FIELD.x + 100, clientY: 25 + 60 });
 
     assert.equal(point.x, 100);
     assert.equal(point.y, 60);
@@ -128,7 +145,7 @@ describe("PointerTracker coordinates", () => {
     // Gestures have no range limit and may be drawn anywhere; the renderer
     // clips the trail rather than the input rejecting it.
     const pointer = tracker(fakeCanvas());
-    assert.ok(pointer.toCanvasPoint({ clientX: 10, clientY: 10 }).x < 0);
+    assert.ok(pointer.toFieldPoint({ clientX: 10, clientY: 10 }).x < 0);
   });
 });
 
@@ -183,5 +200,81 @@ describe("pickups reach the board edges", () => {
 
     assert.equal(game.manaOrbsCollected, 1, "an orb at the right edge must be reachable");
     assert.ok(game.mana.value > before);
+  });
+});
+
+describe("button geometry", () => {
+  const centre = (rect) => ({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
+
+  it("offers one button per difficulty, plus resume", () => {
+    const buttons = menuButtons({ canResume: false });
+    assert.deepEqual(
+      buttons.map((button) => button.id),
+      [...DIFFICULTY_IDS, "resume"],
+    );
+  });
+
+  it("greys out resume until there is something to resume", () => {
+    assert.equal(menuButtons({ canResume: false }).at(-1).enabled, false);
+    assert.equal(menuButtons({ canResume: true }).at(-1).enabled, true);
+  });
+
+  it("keeps every menu button on the canvas and clear of the sidebars", () => {
+    for (const button of menuButtons({ canResume: true })) {
+      assert.ok(button.rect.x > SIDEBAR.width, `"${button.id}" overlaps the left strip`);
+      assert.ok(
+        button.rect.x + button.rect.width < CANVAS.width - SIDEBAR.width,
+        `"${button.id}" overlaps the right strip`,
+      );
+      assert.ok(button.rect.y >= 0);
+      assert.ok(button.rect.y + button.rect.height <= CANVAS.height);
+    }
+  });
+
+  it("stacks the menu buttons without overlapping", () => {
+    const buttons = menuButtons({ canResume: true });
+    for (let index = 1; index < buttons.length; index += 1) {
+      const above = buttons[index - 1].rect;
+      assert.ok(
+        buttons[index].rect.y > above.y + above.height,
+        "two buttons would share a click",
+      );
+    }
+  });
+
+  it("finds the button under a point, and only an enabled one", () => {
+    const disabled = menuButtons({ canResume: false });
+    const resume = disabled.at(-1);
+
+    assert.equal(buttonAt(disabled, centre(resume.rect)), null, "greyed is not clickable");
+    assert.equal(buttonAt(menuButtons({ canResume: true }), centre(resume.rect)).id, "resume");
+    assert.equal(buttonAt(disabled, { x: 0, y: 0 }), null);
+  });
+
+  it("puts the pause button at the top of the right sidebar", () => {
+    const { rect } = pauseButton();
+    assert.ok(rect.x >= CANVAS.width - SIDEBAR.width, "must be inside the right strip");
+    assert.ok(rect.x + rect.width <= CANVAS.width);
+    assert.ok(rect.y < 100, "at the top, above the glyph legend");
+  });
+
+  it("keeps the pause button clear of the play area", () => {
+    // A press on it must not also start a gesture, which is only safe if it
+    // never sits over the board.
+    const { rect } = pauseButton();
+    assert.ok(rect.x > FIELD.x + FIELD.width, "the pause button reaches into the board");
+  });
+
+  it("puts the game-over Menu button below the score", () => {
+    const { rect } = gameOverMenuButton();
+    assert.ok(rect.y > CANVAS.height / 2, "must not cover the headline");
+    assert.equal(rect.x + rect.width / 2, CANVAS.width / 2, "centred");
+  });
+
+  it("tests edges as inside, so a button has no dead border", () => {
+    const { rect } = pauseButton();
+    assert.ok(hits(rect, { x: rect.x, y: rect.y }));
+    assert.ok(hits(rect, { x: rect.x + rect.width, y: rect.y + rect.height }));
+    assert.ok(!hits(rect, { x: rect.x - 1, y: rect.y }));
   });
 });

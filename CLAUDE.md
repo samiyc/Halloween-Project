@@ -45,13 +45,15 @@ inside a unit test. Do not reintroduce `ctx` into an entity.
 ```
 halloween.html → src/main.js   (the only module aware of both DOM and game)
 src/
-  config/    glyphs.js, settings.js — single source of truth, no logic
+  config/    glyphs.js, settings.js, difficulty.js — single source of truth
   tools/     random.js — the only Math.random() in the repo
   entities/  Entity → Enemy, Boss, Player   (state + behaviour, no drawing)
-  game/      game.js (orchestrator), combat.js, spawner.js, mana.js,
-             collection.js, pickup-spawner.js, effects.js, spellbook.js
+  game/      session.js (menu/pause), game.js (orchestrator), combat.js,
+             spawner.js, gauge.js, collection.js, pickup-spawner.js,
+             effects.js, spellbook.js
   engine/    loop.js, keyboard.js, pointer.js, gesture/{geometry,recognizer}.js
-  render/    renderer.js, hud.js, palette.js — all 2D-context code
+  render/    renderer.js, hud.js, menu.js, gauges.js, palette.js — 2D-context
+             code, plus layout.js which is pure geometry and has no ctx
 ```
 
 Dependencies only point downward: `entities/` never imports `render/`.
@@ -189,6 +191,50 @@ so enemies take much longer to cross than originally tuned. Framing the play are
 did not shrink it: it is **44% larger** than the previous 1200x900. Win rate held
 anyway, because a taller board slows the threat and the mana collection equally.
 Tune with `MANA.costCommon` first, then `ENEMY.baseSpeed` / `SPAWN.chancePerFrame`.
+
+## Difficulty, menu and pause
+
+`docs/difficulty.md` holds the detail. The short version:
+
+- **`src/config/difficulty.js`** declares three modes as feature switches, not
+  numbers: `mana`, `rareEnemies`, `spells`, `health`. Easy has none, Normal has
+  the first three, Hard adds health. They are **cumulative**, and a test walks
+  `DIFFICULTY_IDS` to enforce it.
+- Switching `rareEnemies` off passes `rareShare: 0` to the existing `Spawner`.
+  No rare enemy means **no rare glyph can reach a sequence**, so "no bolts or
+  spirals on Easy" is a consequence, not a second rule.
+- **`src/game/session.js`** is the app-level state machine — menu vs playing,
+  Escape, the 300ms toggle cooldown. Pure, no DOM, like `Game`.
+- **Pausing is the absence of an update**: `main.js` stops calling
+  `game.update()` while the menu is up. The run is frozen, not destroyed.
+- **`src/render/layout.js`** returns the button rectangles and touches no ctx.
+  Drawing and hit-testing read the same geometry, so a button cannot be drawn
+  where it cannot be pressed — and it is the one part of the UI a unit test can
+  check.
+- `ManaPool` became **`Gauge`** (`src/game/gauge.js`) when health arrived: the
+  spec asked for a bar "symmetric to the mana bar", so it is the same class and
+  the same `drawVerticalGauge()`, mirrored.
+
+**Hard currently plays exactly like Normal.** The health bar is displayed full
+and nothing damages it; the boss attack patterns that would are still to be
+designed. The test "leaves the health bar untouched for now" is the one that
+should fail when that changes.
+
+### Two coordinate spaces
+
+`PointerTracker.toCanvasPoint()` undoes the CSS scale. **`toFieldPoint()`** then
+subtracts `FIELD.x`. Buttons live in canvas space, entities in field space; the
+two were one function until the HUD buttons made that untenable.
+
+`isEnabled` receives the **canvas** point so a press aimed at the pause button
+cannot also start a gesture — both listeners see the same mousedown.
+
+### A trap worth remembering
+
+Subtracting frame deltas never lands exactly on zero: 18 subtractions of 1000/60
+from 300 leave 7.1e-15, which kept the Escape cooldown "active" for one extra
+frame. `Session.tick()` snaps anything below a millisecond to zero. Any future
+timer built the same way needs the same treatment.
 
 ## The mana economy
 

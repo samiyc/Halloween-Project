@@ -4,6 +4,11 @@
 ont changé par rapport à la conception initiale après mesure — voir
 « Ce que la simulation a corrigé ».
 
+> Tout ce document décrit les modes **Normal** et **Difficile**. En **Facile**
+> l'économie n'existe pas : les gestes sont gratuits, aucune bille ne tombe,
+> aucun sort n'est distribué, et la jauge disparaît du HUD. Voir
+> [difficulty.md](difficulty.md).
+
 ---
 
 ## Le problème que ça résout
@@ -169,7 +174,7 @@ figurant, il est l'alternative économique au sort cher.
 | Propriété | Valeur | Note |
 | --- | --- | --- |
 | Forme | cercle bleu | |
-| Diamètre | **12 px** | la moitié d'un cube gris (25 px) |
+| Diamètre | **20 px** | la moitié d'un cube gris (40 px) |
 | Vitesse de chute | **×1,5 celle des ennemis** → ~1,05 px/frame | traversée en 19 s (terrain de 1200 px) |
 | Taux d'apparition | **×1,5 celui des ennemis** → ~1,35/s | ennemis : 0,9/s |
 | Valeur | 5 pts | |
