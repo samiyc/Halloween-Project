@@ -16,9 +16,9 @@ export const SPELLS = Object.freeze({
     id: "frenzy",
     name: "Frénésie",
     hint: "Attaque ×1,5",
-    durationMs: 8000,
-    /** Divides the melee cooldown: 1500ms becomes 1000ms. */
-    attackSpeedMultiplier: 1.5,
+    durationMs: 5000,
+    /** Divides the melee cooldown */
+    attackSpeedMultiplier: 2.5,
   }),
   frost: Object.freeze({
     id: "frost",
