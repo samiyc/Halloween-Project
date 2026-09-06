@@ -52,6 +52,18 @@ export class Boss extends Entity {
     return this.phase === BOSS_PHASE.retreating;
   }
 
+  /**
+   * Which phase of the fight this is: 1 at full lives, then 2, then 3.
+   *
+   * Counted up from the lives left rather than stored, so it cannot fall out of
+   * step with them. The turret reads it to know which attacks it may pick;
+   * `Boss` itself does nothing with it, and in particular knows nothing about
+   * the turret.
+   */
+  get phaseNumber() {
+    return BOSS.lives - this.lives + 1;
+  }
+
   /** @param {number} deltaMs */
   update(deltaMs) {
     this.tickHitFlash(deltaMs);

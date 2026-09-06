@@ -6,22 +6,76 @@
 ## Ce qui est implémenté
 
 Le boss porte une tourelle : un dôme centré sur lui et un canon qui **pivote
-lentement** vers le héros. Toutes les 2,5 s elle tire un pattern choisi au sort.
+lentement** vers le héros. À la fin de chaque cooldown elle tire un pattern
+choisi au sort **dans la table de sa phase**.
 
-| | Rafale | Rayon |
+### Les quatre attaques
+
+| | Rafale | Rayon | Spirale | Gros projectile |
+| --- | --- | --- | --- | --- |
+| Phases | 1, 2, 3 | 1 et 3 | 2 et 3 | 2 et 3 |
+| Durée | 3 tirs à 250 ms (500 ms) | amorce 500 ms + 2 s | 25 tirs à 100 ms (2,5 s) | un seul tir |
+| Dégâts | 10 par tir, jusqu'à **30** | 10 par seconde, jusqu'à **20** | 10 par tir | **50** |
+| Rotation | 90°/s, suit le héros | **15°/s**, suit le héros | 162°/s, **aveugle** | 90°/s, suit le héros |
+| Cooldown après | 2500 ms | 2500 ms | 2500 ms | **1500 ms** |
+| Ce qu'elle demande | bouger avant le tir | quitter l'axe et rester dehors | sortir de la spirale par l'extérieur | ne jamais la toucher |
+
+### Les phases
+
+La phase se lit sur les vies du boss : **1** à trois vies, **2** à deux, **3** à
+une. `Boss.phaseNumber` la calcule, la tourelle la reçoit à chaque frame, et
+`patternsForPhase()` en tire la table.
+
+| Phase | Table | Chaque attaque rare |
 | --- | --- | --- |
-| Fréquence | 4 fois sur 5 | **1 fois sur 5** |
-| Durée | 3 projectiles à 250 ms d'écart (500 ms) | amorce 500 ms + 2 s de rayon |
-| Dégâts | 10 par projectile, jusqu'à **30** | 5 par seconde, jusqu'à **10** |
-| Ce qu'elle demande | bouger avant le tir | quitter l'axe, et rester dehors |
+| 1 | rafale 4, rayon 1 | rayon 1/5 |
+| 2 | rafale 3, spirale 1, gros 1 | 1/5 chacune |
+| 3 | rafale 2, spirale 1, gros 1, rayon 1 | 1/5 chacune |
 
-### La rotation lente est la mécanique
+**La rafale de trois est dans les trois phases et ne change jamais.** C'est la
+ligne de base à laquelle tout le reste est comparé ; le rayon est la signature
+de la phase 1, la spirale prend sa place en phase 2, et la dernière phase est la
+seule où les quatre peuvent tomber.
+
+### La rotation lente est la mécanique — et elle est par attaque
 
 Sans plafond de rotation, un canon qui s'aligne sur le héros à chaque frame est
 un viseur laser : aucune course ne le sèmerait, et « esquiver » deviendrait
-« encaisser ». Le plafond est à **90°/s**, un quart de tour par seconde.
+« encaisser ». Le plafond de suivi est à **90°/s**, un quart de tour par seconde.
 
-C'est le premier réglage à toucher en jouant. `TURRET.rotationDegPerSecond`.
+Mais un plafond unique ne suffisait pas. **Le rayon n'a rien à anticiper** : il
+lui suffit de continuer à pointer, donc à 90°/s il restait collé au héros et
+était impossible à fuir. Il tourne désormais à **15°/s**, un sixième — et c'est
+précisément parce qu'on peut en sortir qu'il peut se permettre de faire deux
+fois plus mal (5 → **10 dps**).
+
+Chaque pattern peut donc déclarer son `rotationDegPerSecond` ; à défaut il prend
+celui de `TURRET`. La spirale est un cas à part : elle ne suit pas, elle balaie.
+
+### La spirale balaie, elle ne vise pas
+
+405° — un tour plus 45° — en 2,5 s, soit 162°/s, en tirant toutes les 100 ms.
+Le canon **ignore complètement le héros** pendant ce temps : une spirale qui
+suivrait ne serait qu'une rafale très rapide.
+
+Les 45° en trop comptent : sans eux le bras se refermerait exactement sur son
+départ et formerait un anneau plein. Décalé, les derniers tirs tombent **entre**
+les premiers et laissent un passage. Le sens de rotation est tiré au sort à
+chaque lancement, pour qu'on ne puisse pas apprendre le bras par cœur.
+
+Les projectiles de spirale sont **plus lents** (3 px/frame contre 6) : le bras
+doit rester au sol assez longtemps pour qu'on ait à en sortir en marchant vers
+l'extérieur, plutôt qu'à l'esquiver.
+
+### Le gros projectile
+
+Cinq fois le rayon, 50 pv — un tiers de la barre — et 2 px/frame seulement. Il
+n'est jamais un test de réflexe : c'est **un morceau de terrain interdit qui
+dérive vers vous**. Il porte un liseré jaune vif, parce que la taille seule se
+lit comme « proche » et non comme « mortel ».
+
+Son cooldown est court (1500 ms), mais il ne sort qu'une fois sur cinq, donc en
+pratique un toutes les douze secondes environ.
 
 ### L'éventail n'est pas un paramètre
 
@@ -45,24 +99,36 @@ venir n'est pas une attaque, c'est une taxe.**
 
 | Réglage | Valeur | Note |
 | --- | --- | --- |
-| `TURRET.rotationDegPerSecond` | 90 | **Le premier levier** |
-| `TURRET.cooldownMs` | 2500 | Entre deux patterns, quel qu'il soit |
+| `TURRET.rotationDegPerSecond` | 90 | Le suivi de base. **Le premier levier** |
+| `TURRET.cooldownMs` | 2500 | Sauf si le pattern déclare le sien |
 | `TURRET.circleRatio` / `cannonRatio` / `cannonWidthRatio` | 0,30 / 0,55 / 0,14 | Fractions de `boss.size`, donc rétrécit avec le boss |
 | `PROJECTILE.radius` | 10 | Exactement une bille de mana |
 | `PROJECTILE.speed` | 6 px/frame (360 px/s) | **Le deuxième levier** |
 | `PROJECTILE.damage` | 10 | Rafale complète = 30 pv sur 150 |
-| `VOLLEY.shots` / `shotIntervalMs` | 3 / 250 | |
+| `VOLLEY.shots` / `shotIntervalMs` | 3 / 250 | Intouché : c'est la ligne de base |
 | `LASER.chargeMs` / `durationMs` | 500 / 2000 | |
-| `LASER.dps` | 5 | Un passage complet = 10 pv, soit un projectile |
+| `LASER.rotationDegPerSecond` | **15** | Sinon le rayon reste collé au héros |
+| `LASER.dps` | **10** | Un passage complet = 20 pv, deux projectiles |
 | `LASER.beamWidth` | 18 | La largeur de la jauge de mana ; un test le vérifie |
-| Poids | `volley: 4`, `laser: 1` | |
+| `SPIRAL.sweepDegrees` / `durationMs` | 405 / 2500 | 162°/s, dérivé — jamais écrit deux fois |
+| `SPIRAL.shotIntervalMs` | 100 | 25 projectiles par spirale |
+| `SPIRAL.shot.speed` | 3 px/frame | Moitié d'un tir visé |
+| `HEAVY.shot.radius` / `damage` / `speed` | 50 / 50 / 2 | ×5, un tiers de la barre |
+| `HEAVY.cooldownMs` | 1500 | Court, mais une fois sur cinq |
+| Poids | voir la table des phases | |
 
 ### Les règles qui ne se voient pas
 
-- **Pendant la retraite du boss, la tourelle se tait.** Le canon continue de
-  pivoter — c'est ce qui rend la reprise lisible — mais rien ne part. Un boss à
-  la fois intouchable et armé cumulerait les deux pressions au seul moment où le
-  joueur ne peut rien y faire. Le retour donne en plus un cooldown complet.
+- **Pendant la retraite du boss, la tourelle est hors service.** Rien ne part, le
+  canon **se fige** et le dôme passe au gris. Un boss à la fois intouchable et
+  armé cumulerait les deux pressions au seul moment où le joueur ne peut rien y
+  faire ; le canon immobile sur un dôme gris dit que la tourelle est endommagée,
+  au lieu de laisser croire à une menace qui ne peut pas tirer. Le retour donne
+  en plus un cooldown complet.
+
+  > Une première version gardait le canon en rotation pendant la retraite, pour
+  > que sa reprise soit lisible. Elle l'était, mais elle mentait : un canon qui
+  > suit se lit comme un canon qui va tirer.
 - **Aucune invulnérabilité après un impact.** Une rafale entière qui touche coûte
   bien 30 pv. C'est le prix de ne pas avoir bougé, et c'est ce qui fait de la
   rotation lente une vraie fenêtre.
@@ -85,12 +151,9 @@ indiqué en supposant l'infrastructure actuelle (`Turret`, `Projectile`,
 
 ### A. Ce que la structure actuelle offre presque gratuitement
 
-**Gerbe en spirale.** Le canon tourne à vitesse constante en tirant en continu,
-en ignorant le héros pendant 3 s. Le motif au sol devient un escargot de
-projectiles qu'on traverse en marchant vers l'extérieur, jamais en fuyant tout
-droit. C'est le pattern bullet-hell canonique, et il enseigne au joueur que la
-distance n'est pas toujours la réponse. ⭐
-*Coût : un pattern, plus une rotation qui ignore la cible. Très faible.*
+**~~Gerbe en spirale~~ — implémentée**, voir plus haut. Elle a aussi apporté
+l'infrastructure dont vivent la moitié des propositions ci-dessous : un canon
+qui balaie sans viser, et une cadence de tir découplée du nombre de tirs.
 
 **Anneau à brèche.** Douze projectiles partis du boss dans toutes les
 directions, sauf un secteur. La brèche est visible parce qu'elle est vide : le
@@ -162,10 +225,10 @@ existe :
 
 ### Par où continuer
 
-1. **La spirale**, parce qu'elle est presque gratuite et qu'elle change
-   radicalement la façon dont on se déplace.
-2. **Le double tap**, parce qu'il corrige la faiblesse actuelle : fuir en ligne
-   droite marche trop bien.
+1. **Le double tap**, parce qu'il corrige la faiblesse restante : fuir en ligne
+   droite marche encore trop bien contre la rafale.
+2. **L'anneau à brèche**, désormais quasi gratuit — le balayage de la spirale a
+   déjà apporté le canon qui tire sans viser.
 3. **Les mines**, quand il faudra que la tourelle pèse sur la collecte de mana et
    plus seulement sur les déplacements.
 

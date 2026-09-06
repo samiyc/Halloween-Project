@@ -226,19 +226,29 @@ Tune with `MANA.costCommon` first, then `ENEMY.baseSpeed` / `SPAWN.chancePerFram
 `docs/boss-patterns.md` holds the detail and the proposals for further patterns.
 
 The boss carries a dome and a barrel that **tracks the player slowly** and fires
-every 2.5s: a three-shot burst four times in five, a two-second beam the fifth.
-Health can now reach zero, which is a third loss reason beside "an enemy crossed"
-and "the boss crossed".
+one attack per cooldown, rolled from **its phase's table**. Health can now reach
+zero, which is a third loss reason beside "an enemy crossed" and "the boss
+crossed".
 
-- **The rotation cap is the mechanic.** Uncapped tracking is a laser sight that
-  nothing outruns, and dodging collapses into taking the damage.
-  `TURRET.rotationDegPerSecond` is the first thing to tune.
+- **The rotation cap is the mechanic, and it is per pattern.** Uncapped tracking
+  is a laser sight that nothing outruns. `TURRET.rotationDegPerSecond` (90) is
+  the tracking default; a pattern may override it, and the beam does — at 90 it
+  simply stayed on the player, because a beam never has to lead a target. At 15
+  it can be walked out of, which is what earned it double damage.
+- **Phases come from lives**: `Boss.phaseNumber` is 1 at full lives, then 2, then
+  3; `patternsForPhase()` owns the tables and clamps, because the boss spends a
+  frame at zero lives before the run is won. The three-shot volley is in every
+  phase and is deliberately the one thing that never changes.
 - **There is no spread parameter, and there must not be one.** The barrel keeps
   tracking through a burst, so a moving player makes the shots fan out on their
   own. The fan is information: it says the player moved.
-- **The turret holds fire while the boss is invincible** (`canFire`), and re-arms
-  a full cooldown on the way back. The barrel keeps turning throughout, or its
-  return would be a snap with no tell.
+- **The spiral sweeps blind** — it ignores the target entirely, at a rate derived
+  from `sweepDegrees / durationMs` rather than written twice. 405° rather than
+  360° so the arm does not close on its own start, leaving a walkable gap.
+- **The turret holds fire while the boss is invincible** (`canFire`), which also
+  **freezes the barrel and greys the dome**, and re-arms a full cooldown on the
+  way back. An earlier version kept the barrel tracking through the retreat so
+  its return would be readable; it read as a threat that could not fire.
 - **`Game` owns the turret, not `Boss`.** It needs the player's position, and the
   boss must not learn about the player — the same decoupling that fixed enemies
   reaching into the boss object.

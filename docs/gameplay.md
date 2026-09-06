@@ -109,14 +109,17 @@ courte — la retraite finale — après quoi la partie est gagnée.
 
 ### Sa tourelle, en Difficile
 
-Le boss porte un dôme et un canon qui pivote lentement vers le héros, et tire
-toutes les 2,5 s : une rafale de trois projectiles quatre fois sur cinq, un rayon
-de deux secondes la cinquième. Encaisser fait clignoter le héros en blanc et
-descendre la barre de vie ; à zéro, la partie est perdue.
+Le boss porte un dôme et un canon qui pivote lentement vers le héros, et tire à
+la fin de chaque cooldown un pattern tiré au sort **dans la table de sa phase** :
+la rafale de trois projectiles partout, le rayon en phases 1 et 3, la spirale et
+le gros projectile à partir de la phase 2. Encaisser fait clignoter le héros en
+blanc et descendre la barre de vie ; à zéro, la partie est perdue.
 
-**La tourelle se tait pendant la retraite.** Le canon continue de pivoter, mais
-un boss à la fois intouchable et armé cumulerait les deux pressions au seul
-moment où le joueur ne peut rien y faire.
+La phase se lit sur les vies : 1 à trois vies, 2 à deux, 3 à une.
+
+**Pendant la retraite, la tourelle est hors service** : le canon se fige et le
+dôme passe au gris. Un boss à la fois intouchable et armé cumulerait les deux
+pressions au seul moment où le joueur ne peut rien y faire.
 
 Les patterns, leurs valeurs et les suivants envisagés :
 [boss-patterns.md](boss-patterns.md).
@@ -225,12 +228,14 @@ Le tableau complet est dans [boss-patterns.md](boss-patterns.md) ; l'essentiel :
 
 | Réglage | Valeur |
 | --- | --- |
-| `TURRET.rotationDegPerSecond` | 90 — **le levier principal** |
-| `TURRET.cooldownMs` | 2500 |
+| `TURRET.rotationDegPerSecond` | 90 — le suivi de base, **le levier principal** |
+| `TURRET.cooldownMs` | 2500, sauf si le pattern déclare le sien |
 | `PROJECTILE.speed` / `damage` / `radius` | 6 / 10 / 10 |
 | `VOLLEY.shots` / `shotIntervalMs` | 3 / 250 |
-| `LASER.chargeMs` / `durationMs` / `dps` | 500 / 2000 / 5 |
-| Poids des patterns | rafale 4, rayon 1 |
+| `LASER.rotationDegPerSecond` / `durationMs` / `dps` | 15 / 2000 / 10 |
+| `SPIRAL.sweepDegrees` / `durationMs` / `shotIntervalMs` | 405 / 2500 / 100 |
+| `HEAVY.shot.radius` / `damage` / `cooldownMs` | 50 / 50 / 1500 |
+| Poids des patterns | par phase, voir `PHASE_PATTERNS` |
 
 ## Un point d'équilibrage à surveiller
 

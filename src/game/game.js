@@ -155,7 +155,10 @@ export class Game {
         target: { x: this.player.centerX, y: this.player.centerY },
         // A retreating boss is untouchable; letting it shoot as well would
         // stack both pressures at the one moment nothing can be done about it.
+        // It also freezes the barrel and greys the dome — the tell that the
+        // boss is between lives.
         canFire: !this.boss.isInvincible,
+        phase: this.boss.phaseNumber,
       }),
     );
 

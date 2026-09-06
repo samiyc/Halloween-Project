@@ -25,6 +25,8 @@ export class Projectile {
     this.radius = traits.radius;
     this.damage = traits.damage;
     this.color = traits.color;
+    /** Optional bright rim; only the heavy shot carries one. */
+    this.ring = traits.ring;
     this.velocityX = Math.cos(angle) * traits.speed;
     this.velocityY = Math.sin(angle) * traits.speed;
   }

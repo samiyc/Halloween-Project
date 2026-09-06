@@ -14,6 +14,12 @@ import { withAlpha } from "../tools/color.js";
 
 /** Dark enough to read as a thing mounted on the boss, not part of it. */
 const TURRET_COLOR = "#8C1D0E";
+/**
+ * Greyed while the boss is invincible, matching `BOSS.invincibleColor` a shade
+ * darker. The frozen barrel already says the turret is down; the colour is what
+ * says it at a glance, without watching it for a second first.
+ */
+const TURRET_DISARMED = "#6E6E6E";
 const TURRET_EDGE = "rgba(0, 0, 0, 0.45)";
 
 /** Long enough to leave the board from any angle; the clip does the rest. */
@@ -29,22 +35,23 @@ const BEAM_REACH = Math.hypot(FIELD.width, FIELD.height);
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {{x: number, y: number, size: number}} mount  Boss centre and side.
- * @param {number} angle
+ * @param {{angle: number, isDisarmed: boolean}} turret
  */
-export function drawTurret(ctx, mount, angle) {
+export function drawTurret(ctx, mount, turret) {
   const { size } = mount;
   const barrelWidth = size * TURRET.cannonWidthRatio;
+  const color = turret.isDisarmed ? TURRET_DISARMED : TURRET_COLOR;
 
   ctx.save();
   ctx.translate(mount.x, mount.y);
-  ctx.rotate(angle);
-  ctx.fillStyle = TURRET_COLOR;
+  ctx.rotate(turret.angle);
+  ctx.fillStyle = color;
   ctx.fillRect(0, -barrelWidth / 2, size * TURRET.cannonRatio, barrelWidth);
   ctx.restore();
 
   ctx.beginPath();
   ctx.arc(mount.x, mount.y, size * TURRET.circleRatio, 0, Math.PI * 2);
-  ctx.fillStyle = TURRET_COLOR;
+  ctx.fillStyle = color;
   ctx.fill();
   ctx.strokeStyle = TURRET_EDGE;
   ctx.lineWidth = 2;
@@ -52,8 +59,13 @@ export function drawTurret(ctx, mount, angle) {
 }
 
 /**
+ * Every shot in flight.
+ *
+ * A shot whose traits carry a `ring` gets a bright rim — the heavy one, where
+ * size alone reads as "near" rather than as "this takes a third of your bar".
+ *
  * @param {CanvasRenderingContext2D} ctx
- * @param {readonly {x: number, y: number, radius: number, color: string}[]} projectiles
+ * @param {readonly {x: number, y: number, radius: number, color: string, ring?: string}[]} projectiles
  */
 export function drawProjectiles(ctx, projectiles) {
   for (const shot of projectiles) {
@@ -61,6 +73,11 @@ export function drawProjectiles(ctx, projectiles) {
     ctx.arc(shot.x, shot.y, shot.radius, 0, Math.PI * 2);
     ctx.fillStyle = shot.color;
     ctx.fill();
+
+    if (!shot.ring) continue;
+    ctx.strokeStyle = shot.ring;
+    ctx.lineWidth = 4;
+    ctx.stroke();
   }
 }
 

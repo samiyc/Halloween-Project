@@ -167,7 +167,7 @@ class App {
   drawBoard() {
     const { game, renderer } = this;
     renderer.drawBoss(game.boss);
-    if (game.turret) drawTurret(renderer.ctx, game.turretMount, game.turret.angle);
+    if (game.turret) drawTurret(renderer.ctx, game.turretMount, game.turret);
     for (const enemy of game.enemies) {
       renderer.drawEntity(enemy);
     }
