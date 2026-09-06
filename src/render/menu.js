@@ -1,5 +1,5 @@
 import { CANVAS } from "../config/settings.js";
-import { menuButtons } from "./layout.js";
+import { buttonLines, menuButtons } from "./layout.js";
 import { FONTS, PALETTE } from "./palette.js";
 
 /**
@@ -24,16 +24,26 @@ export function drawButton(ctx, button) {
   ctx.lineWidth = 2;
   ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
 
-  const hasHint = Boolean(button.hint);
+  // Line positions come from `layout.js`, like the rectangle itself: a line
+  // placed by a constant counted down from `rect.y` is what put the "Échap"
+  // hint on the bottom border, and it was a number no test could see.
+  const [label, hint] = buttonLines(button);
+  const centerX = rect.x + rect.width / 2;
+
   ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
   ctx.fillStyle = enabled ? PALETTE.text : PALETTE.textMuted;
   ctx.font = FONTS.hud;
-  ctx.fillText(button.label, rect.x + rect.width / 2, rect.y + (hasHint ? 38 : 42));
+  ctx.fillText(button.label, centerX, label.y);
 
-  if (!hasHint) return;
-  ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = FONTS.label;
-  ctx.fillText(button.hint, rect.x + rect.width / 2, rect.y + 66);
+  if (hint) {
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = FONTS.label;
+    ctx.fillText(button.hint, centerX, hint.y);
+  }
+
+  // Restored: every other draw in the HUD assumes the default baseline.
+  ctx.textBaseline = "alphabetic";
 }
 
 /**

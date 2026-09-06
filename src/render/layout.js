@@ -18,6 +18,18 @@ const MENU_BUTTON = Object.freeze({ width: 460, height: 96, gap: 24 });
 const PAD = 20;
 
 /**
+ * Heights of the two text lines of a button, matching `FONTS.hud` and
+ * `FONTS.label`, plus the space between them.
+ *
+ * They live here, with the rectangles, rather than in the drawing code: text
+ * placed by offsets counted down from the top of a rect is exactly how the
+ * "Échap" hint ended up sitting on the pause button's bottom border, and a
+ * number kept in `menu.js` is a number no test can reach. A test pins them
+ * against the fonts they stand for.
+ */
+export const LINE_HEIGHT = Object.freeze({ label: 24, hint: 19, gap: 9 });
+
+/**
  * @param {Rect} rect
  * @param {{x: number, y: number}} point  In canvas coordinates, not field ones.
  * @returns {boolean}
@@ -43,6 +55,29 @@ export function hits(rect, point) {
  */
 export function buttonAt(buttons, point) {
   return buttons.find((button) => button.enabled && hits(button.rect, point)) ?? null;
+}
+
+/**
+ * Where a button's text sits, as middle-baseline y coordinates: the label
+ * first, then the hint when there is one.
+ *
+ * Measured out from the middle of the rect, so both lines stay inside it at any
+ * height — which is what makes the button safe to resize.
+ *
+ * @param {Button} button
+ * @returns {Array<{y: number, height: number}>}
+ */
+export function buttonLines({ rect, hint }) {
+  const centerY = rect.y + rect.height / 2;
+  const { label, hint: hintHeight, gap } = LINE_HEIGHT;
+  if (!hint) return [{ y: centerY, height: label }];
+
+  const block = label + gap + hintHeight;
+  const top = centerY - block / 2;
+  return [
+    { y: top + label / 2, height: label },
+    { y: top + block - hintHeight / 2, height: hintHeight },
+  ];
 }
 
 /**
@@ -82,6 +117,8 @@ export function menuButtons({ canResume }) {
 
 /**
  * The pause button, top of the right sidebar. The glyph legend sits below it.
+ *
+ * Tall enough for two lines: at 64 the « Échap » hint sat on the bottom border.
  * @returns {Button}
  */
 export function pauseButton() {
@@ -93,7 +130,7 @@ export function pauseButton() {
       x: CANVAS.width - SIDEBAR.width + PAD,
       y: PAD,
       width: SIDEBAR.width - 2 * PAD,
-      height: 64,
+      height: 76,
     },
     enabled: true,
   };

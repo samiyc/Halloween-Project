@@ -1,4 +1,6 @@
 import { symbolFor } from "../config/glyphs.js";
+import { HIT_FLASH, clampDelta } from "../config/settings.js";
+import { mixHex } from "../tools/color.js";
 
 /**
  * Base class for anything that carries a glyph sequence and can be worn down.
@@ -23,6 +25,8 @@ export class Entity {
     this.y = y;
     this.size = size;
     this.sequence = sequence;
+    /** Milliseconds left on the hit flash; see `displayColor`. */
+    this.hitFlashMs = 0;
   }
 
   get centerX() {
@@ -30,12 +34,33 @@ export class Entity {
   }
 
   /**
-   * The colour to draw with. Subclasses override it to express state — a
-   * slowed enemy, for instance — so the renderer never has to know about
-   * gameplay rules.
+   * The colour this entity settles back to. Subclasses override *this* rather
+   * than `displayColor` to express a lasting state — a slowed enemy, say — so
+   * the hit flash stays written once and applies to every kind of target.
+   */
+  get baseColor() {
+    return this.color;
+  }
+
+  /**
+   * The colour to draw with, flash included, so the renderer never has to know
+   * about gameplay rules.
+   *
+   * The blend runs from the flash colour back to `baseColor` as the countdown
+   * empties: pale on the frame of impact, then a short fade home. Confirmation
+   * has to land on that frame, which an eased attack would blur.
    */
   get displayColor() {
-    return this.color;
+    if (this.hitFlashMs <= 0) return this.baseColor;
+    return mixHex(this.baseColor, HIT_FLASH.color, this.hitFlashMs / HIT_FLASH.durationMs);
+  }
+
+  /**
+   * Burns down the hit flash. Subclasses call it from their own `update()`.
+   * @param {number} deltaMs
+   */
+  tickHitFlash(deltaMs) {
+    this.hitFlashMs = Math.max(0, this.hitFlashMs - clampDelta(deltaMs));
   }
 
   get centerY() {
@@ -57,12 +82,18 @@ export class Entity {
 
   /**
    * Removes the head symbol, whatever its length in code units.
+   *
+   * Both damage sources — the gesture through `decrementSequence()` and the
+   * melee through `stripSymbol()` — funnel through here, which is why the hit
+   * flash is armed at this single point rather than at each call site.
+   *
    * @returns {string|null} the symbol removed, or null on an empty sequence
    */
   dropFirstSymbol() {
     const symbol = this.nextSymbol;
     if (symbol === null) return null;
     this.sequence = this.sequence.slice(symbol.length);
+    this.hitFlashMs = HIT_FLASH.durationMs;
     return symbol;
   }
 

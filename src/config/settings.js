@@ -129,6 +129,24 @@ export const PLAYER = Object.freeze({
   meleeCooldownMs: 1500,
 });
 
+/**
+ * The flash that confirms a hit.
+ *
+ * Losing a symbol was only legible by reading the sequence shrink, which is
+ * exactly what a player has no attention for mid-fight. The square now snaps to
+ * a pale tone and slides back to its own colour, so a gesture that connects is
+ * felt rather than checked.
+ *
+ * Instant on the way in, gradual on the way out: an eased fade in both
+ * directions would blur the very moment being confirmed.
+ */
+export const HIT_FLASH = Object.freeze({
+  /** Short on purpose — long enough to register, short enough to stack up. */
+  durationMs: 100,
+  /** Pale rather than saturated, so it reads on grey, purple and orange alike. */
+  color: "#F2F6F8",
+});
+
 export const SPAWN = Object.freeze({
   /** Chance per 60 Hz frame that an enemy appears. */
   chancePerFrame: 0.015,

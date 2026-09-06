@@ -40,6 +40,33 @@ La mêlée a d'abord été mono-cible, pour que le placement ne domine pas les
 gestes. Elle frappe désormais tout le cercle — c'est ce qui récompense le fait
 de plonger dans un groupe — et sa portée a été resserrée de 15 % en compensation.
 
+## Le retour visuel des dégâts
+
+Perdre un symbole ne se lisait qu'en relisant la séquence au-dessus de la cible
+— exactement ce qu'on n'a pas le temps de faire en pleine vague. Un carré touché
+**vire instantanément au blanc cassé (`#F2F6F8`), puis revient progressivement à
+sa couleur** en 100 ms.
+
+Trois décisions valent d'être notées :
+
+- **Instantané à l'aller, progressif au retour.** Une montée en fondu diluerait
+  la frame même qu'on cherche à confirmer. C'est le retour qui est graduel.
+- **Un ton clair, pas une couleur vive.** Gris, violet et orange n'ont en commun
+  que d'être plus sombres que le flash ; une confirmation saturée lisible sur
+  l'un disparaîtrait sur l'autre.
+- **Un seul point d'accroche.** Geste et mêlée passent tous deux par
+  `Entity.dropFirstSymbol()`, c'est donc là — et là seulement — que le compteur
+  est armé. Aucune source de dégâts ne peut l'oublier, y compris celles qui
+  n'existent pas encore.
+
+Le flash s'applique à **tous les niveaux de difficulté** et à toutes les cibles :
+ennemi gris, ennemi rare, boss. Le boss en retraite est invincible, `stripSymbol()`
+y renvoie `null` : rien n'est retiré, donc rien ne clignote.
+
+Un ennemi gelé par Givre flashe aussi, et **revient au bleu givre, pas au gris** :
+`Enemy` redéfinit `baseColor` et non `displayColor`, pour que les deux états se
+composent au lieu de s'écraser.
+
 ## Victoire et défaite
 
 - **Gagné** quand le boss termine sa dernière retraite sans vie restante.
@@ -168,6 +195,13 @@ aussi plus de temps.
 | --- | --- |
 | `chancePerFrame` | 0,015 → environ 0,9 ennemi par seconde |
 | `rareShare` | 0,12 |
+
+### Retour visuel
+
+| Réglage | Valeur |
+| --- | --- |
+| `HIT_FLASH.durationMs` | 100 — assez court pour que deux coups ne se confondent pas |
+| `HIT_FLASH.color` | `#F2F6F8`, blanc cassé |
 
 ## Un point d'équilibrage à surveiller
 

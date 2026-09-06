@@ -46,7 +46,7 @@ inside a unit test. Do not reintroduce `ctx` into an entity.
 halloween.html → src/main.js   (the only module aware of both DOM and game)
 src/
   config/    glyphs.js, settings.js, difficulty.js — single source of truth
-  tools/     random.js — the only Math.random() in the repo
+  tools/     random.js — the only Math.random() in the repo; color.js
   entities/  Entity → Enemy, Boss, Player   (state + behaviour, no drawing)
   game/      session.js (menu/pause), game.js (orchestrator), combat.js,
              spawner.js, gauge.js, collection.js, pickup-spawner.js,
@@ -56,7 +56,11 @@ src/
              code, plus layout.js which is pure geometry and has no ctx
 ```
 
-Dependencies only point downward: `entities/` never imports `render/`.
+Dependencies only point downward: `entities/` never imports `render/`. Colour
+arithmetic (`withAlpha`, `mixHex`) therefore lives in `tools/color.js`, not in
+`palette.js` — an enemy computes its own tint. `channels()` there handles the
+`#rgb` shorthand on purpose: `ENEMY.color` is `"#AAA"`, and read as six digits
+it parses to a dark blue instead of grey.
 
 ### The glyph registry
 
@@ -297,6 +301,31 @@ cannot tell you whether a run is still winnable.
   also start a stroke that the release would charge for.
 - There is **no player/enemy collision**, so collecting costs only attention.
   That is the main open design risk, recorded in `docs/rewards.md`.
+- **HUD text is placed from the middle of its rect, never by an offset counted
+  down from the top.** `pauseButton()` was 64 tall with its hint written at
+  `y + 66`, so "Échap" was drawn across the bottom border — the same defect the
+  spell slot had. `buttonLines()` in `layout.js` now derives both baselines from
+  the rect, so a button can be resized safely, and a test checks every button's
+  lines stay inside it. `drawButton` sets `textBaseline` and restores it: no
+  other draw in the HUD expects anything but the default.
+
+### The hit flash
+
+Losing a symbol lights the square to `HIT_FLASH.color` and fades it back over
+100 ms, on every difficulty. Three things keep it in one piece:
+
+- It is armed in **`Entity.dropFirstSymbol()`**, the single point both damage
+  sources funnel through (`decrementSequence` for gestures, `stripSymbol` for the
+  melee). Do not arm it at a call site; a new damage source would then miss it.
+- Subclasses express a lasting tint by overriding **`baseColor`, never
+  `displayColor`** — `displayColor` is the flash blended over `baseColor`. That
+  is why a frozen enemy still flashes and fades back to blue rather than grey.
+- The countdown burns down in `Enemy.update()` and `Boss.update()` through
+  `tickHitFlash()`, which clamps like every other delta consumer.
+
+A flash is invisible in a screenshot taken through browser automation unless the
+loop is stopped first (`app.loop.stop()`), then a single `app.frame(0)` drawn:
+100 ms is six rAF frames, long gone by the time the screenshot lands.
 
 `Keyboard.takePresses()` is the hook for key-driven abilities.
 

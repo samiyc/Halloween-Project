@@ -1,24 +1,6 @@
 import { SIDEBAR } from "../config/settings.js";
 import { SPELL_COLORS } from "../config/spells.js";
-
-/**
- * A hex colour at partial opacity.
- *
- * Lets a translucent shade be derived from the one that defines it rather than
- * hand-copied, which is how the preview circle and the frost tint used to drift
- * apart waiting to happen.
- *
- * @param {string} hex
- * @param {number} alpha
- * @returns {string}
- */
-function withAlpha(hex, alpha) {
-  const value = Number.parseInt(hex.slice(1), 16);
-  const r = (value >> 16) & 255;
-  const g = (value >> 8) & 255;
-  const b = value & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+import { withAlpha } from "../tools/color.js";
 
 /**
  * Every colour and font used on the canvas. Kept apart from `settings.js` so

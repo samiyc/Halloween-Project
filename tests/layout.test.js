@@ -14,12 +14,15 @@ import {
 } from "../src/config/settings.js";
 import { PointerTracker } from "../src/engine/pointer.js";
 import {
+  LINE_HEIGHT,
   buttonAt,
+  buttonLines,
   gameOverMenuButton,
   hits,
   menuButtons,
   pauseButton,
 } from "../src/render/layout.js";
+import { FONTS } from "../src/render/palette.js";
 import { Game } from "../src/game/game.js";
 import { createSeededRandom } from "../src/tools/random.js";
 
@@ -276,5 +279,54 @@ describe("button geometry", () => {
     assert.ok(hits(rect, { x: rect.x, y: rect.y }));
     assert.ok(hits(rect, { x: rect.x + rect.width, y: rect.y + rect.height }));
     assert.ok(!hits(rect, { x: rect.x - 1, y: rect.y }));
+  });
+});
+
+describe("button text fits its box", () => {
+  const everyButton = () => [
+    ...menuButtons({ canResume: true }),
+    pauseButton(),
+    gameOverMenuButton(),
+  ];
+
+  it("keeps every line inside the border, on every button", () => {
+    // The regression this exists for: the pause button was 64 tall with its
+    // hint written at a fixed y + 66, so "Échap" was drawn across the bottom
+    // border. Placement now scales with the rect, and this is what says so.
+    for (const button of everyButton()) {
+      const { rect } = button;
+      for (const line of buttonLines(button)) {
+        assert.ok(
+          line.y - line.height / 2 >= rect.y,
+          `${button.id}: a line starts above its box`,
+        );
+        assert.ok(
+          line.y + line.height / 2 <= rect.y + rect.height,
+          `${button.id}: a line runs past the bottom border`,
+        );
+      }
+    }
+  });
+
+  it("gives one line to a button without a hint, two to one with", () => {
+    assert.equal(buttonLines(pauseButton()).length, 2);
+    assert.equal(buttonLines(gameOverMenuButton()).length, 1);
+  });
+
+  it("centres the block, so the margins above and below match", () => {
+    for (const button of everyButton()) {
+      const lines = buttonLines(button);
+      const above = lines[0].y - lines[0].height / 2 - button.rect.y;
+      const last = lines.at(-1);
+      const below = button.rect.y + button.rect.height - (last.y + last.height / 2);
+      assert.ok(Math.abs(above - below) < 1, `${button.id}: text sits off-centre`);
+    }
+  });
+
+  it("keeps the line heights in step with the fonts they stand for", () => {
+    // `layout.js` cannot read the fonts without pulling `palette.js` into pure
+    // geometry, so the two are pinned here instead.
+    assert.equal(LINE_HEIGHT.label, Number.parseInt(FONTS.hud, 10));
+    assert.equal(LINE_HEIGHT.hint, Number.parseInt(FONTS.label, 10));
   });
 });

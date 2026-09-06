@@ -54,6 +54,7 @@ export class Boss extends Entity {
 
   /** @param {number} deltaMs */
   update(deltaMs) {
+    this.tickHitFlash(deltaMs);
     const frames = toFrames(deltaMs);
     if (this.isInvincible) {
       this.retreat(frames);

@@ -37,8 +37,13 @@ export class Enemy extends Entity {
       sequence.length * traits.speedPerSymbol;
   }
 
-  /** Tinted while the Givre holds it, so the effect is readable at a glance. */
-  get displayColor() {
+  /**
+   * Tinted while the Givre holds it, so the effect is readable at a glance.
+   *
+   * Overriding `baseColor` rather than `displayColor` keeps the hit flash: a
+   * frozen enemy still flashes, and fades back to the frost blue, not to grey.
+   */
+  get baseColor() {
     return this.slowRemainingMs > 0 ? FROST_ENEMY_COLOR : this.color;
   }
 
@@ -64,6 +69,7 @@ export class Enemy extends Entity {
    *   boss was absent; a plain flag removes that coupling.
    */
   update(deltaMs, { reversed = false } = {}) {
+    this.tickHitFlash(deltaMs);
     this.slowRemainingMs = Math.max(0, this.slowRemainingMs - clampDelta(deltaMs));
     const step = this.effectiveSpeed * toFrames(deltaMs);
     this.y += reversed ? -step : step;
