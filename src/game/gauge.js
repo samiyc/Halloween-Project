@@ -60,4 +60,26 @@ export class Gauge {
     this.value -= cost;
     return true;
   }
+
+  /**
+   * Takes whatever is there, down to empty.
+   *
+   * The other half of `spend()`, and the distinction is not pedantic: you
+   * *pay* mana, you *suffer* damage. All-or-nothing on a health bar would make
+   * a player with 5 HP left immortal — `spend(10)` would refuse forever and the
+   * gauge could never reach zero.
+   *
+   * @param {number} amount
+   * @returns {number} how much was actually taken
+   */
+  drain(amount) {
+    if (amount <= 0) return 0;
+    const taken = Math.min(this.value, amount);
+    this.value -= taken;
+    return taken;
+  }
+
+  get isEmpty() {
+    return this.value <= 0;
+  }
 }

@@ -5,7 +5,9 @@ import { FIELD, PLAYER, SPAWN, clampDelta } from "../config/settings.js";
 import { SPELL_IDS } from "../config/spells.js";
 import { Boss } from "../entities/boss.js";
 import { Player } from "../entities/player.js";
+import { Turret } from "../entities/turret.js";
 import { systemRandom } from "../tools/random.js";
+import { beamDamage, resolveProjectiles } from "./boss-attacks.js";
 import { collectPickups } from "./collection.js";
 import { resolveGesture, resolveMelee } from "./combat.js";
 import { Gauge } from "./gauge.js";
@@ -23,6 +25,7 @@ export const GAME_STATUS = Object.freeze({
 export const END_REASON = Object.freeze({
   boss: "boss",
   enemy: "enemy",
+  health: "health",
 });
 
 /** How long the gauge flashes after a cast was refused for lack of mana. */
@@ -78,8 +81,14 @@ export class Game {
       drops: { mana: this.rules.mana, spells: this.rules.spells },
     });
     this.mana = new Gauge();
-    /** Hard only. Displayed at full; nothing damages it yet. */
+    /** Hard only, and the turret below is the only thing that empties it. */
     this.health = this.rules.health ? new Gauge(HEALTH) : null;
+    // Gated on `health` rather than a switch of its own: the bar exists for the
+    // turret and nothing else can take health, so a `bossAttacks` flag could
+    // never hold a different value.
+    this.turret = this.rules.health ? new Turret({ rng: this.rng }) : null;
+    /** @type {import("../entities/projectile.js").Projectile[]} */
+    this.projectiles = [];
     /** @type {import("../config/spells.js").SpellId|null} The single spell slot. */
     this.heldSpell = null;
     this.status = GAME_STATUS.running;
@@ -97,6 +106,16 @@ export class Game {
   }
 
   /**
+   * Where the turret is mounted: the boss centre, and the side it scales from.
+   *
+   * Read by the turret each frame and by the renderer, so the two cannot end up
+   * pivoting about different points.
+   */
+  get turretMount() {
+    return { x: this.boss.centerX, y: this.boss.centerY, size: this.boss.size };
+  }
+
+  /**
    * Advances one frame.
    * @param {number} deltaMs
    * @param {{x: number, y: number}} moveDirection
@@ -111,10 +130,45 @@ export class Game {
     this.player.update(deltaMs, moveDirection, this.bounds);
     this.advanceBoard(deltaMs);
     this.advancePickups(deltaMs);
+    this.advanceAttacks(deltaMs);
     this.runMelee();
     this.runSpawners(deltaMs);
 
     this.settleEndConditions();
+  }
+
+  /**
+   * The turret: aim, fire, and collect what it costs the player.
+   *
+   * Runs after the board so the barrel aims at this frame's positions, and
+   * before `settleEndConditions()` so an emptied bar ends the run on the same
+   * frame it emptied.
+   *
+   * @param {number} deltaMs
+   */
+  advanceAttacks(deltaMs) {
+    if (!this.turret) return;
+
+    this.projectiles.push(
+      ...this.turret.update(deltaMs, {
+        origin: this.turretMount,
+        target: { x: this.player.centerX, y: this.player.centerY },
+        // A retreating boss is untouchable; letting it shoot as well would
+        // stack both pressures at the one moment nothing can be done about it.
+        canFire: !this.boss.isInvincible,
+      }),
+    );
+
+    const volley = resolveProjectiles(this.player, this.projectiles, {
+      bounds: this.bounds,
+      deltaMs,
+    });
+    this.projectiles = volley.remaining;
+    // The blink confirms an impact, so only a shot arms it. The beam is already
+    // drawn across the player; blinking every frame would just bleach the
+    // square white and cost the green its meaning.
+    if (volley.damage > 0) this.player.takeHit();
+    this.health.drain(volley.damage + beamDamage(this.player, this.turret.beam, deltaMs));
   }
 
   /** @param {number} deltaMs */
@@ -228,6 +282,12 @@ export class Game {
   settleEndConditions() {
     if (this.boss.isDefeatedForGood()) {
       this.status = GAME_STATUS.won;
+      return;
+    }
+    // Hard only, since only Hard has a bar to empty.
+    if (this.health?.isEmpty) {
+      this.endedBecause = END_REASON.health;
+      this.status = GAME_STATUS.lost;
       return;
     }
     // The reason is recorded because losing to the boss is easy to miss: it

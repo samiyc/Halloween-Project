@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { ENEMY, HIT_FLASH, RARE_ENEMY, TIME } from "../src/config/settings.js";
+import { ENEMY, HIT_FLASH, PLAYER, RARE_ENEMY, TIME } from "../src/config/settings.js";
 import { FROST_ENEMY_COLOR } from "../src/config/spells.js";
 import { Boss } from "../src/entities/boss.js";
 import { Enemy } from "../src/entities/enemy.js";
@@ -147,6 +147,35 @@ describe("hit flash", () => {
 
   it("is short enough to stack up under the melee cadence", () => {
     assert.ok(HIT_FLASH.durationMs < 200, "a long flash would blur consecutive hits");
+  });
+});
+
+describe("the player blinks too", () => {
+  it("goes pale when something lands on it, and fades back to green", () => {
+    // `Player` does not extend `Entity` — it carries no glyph sequence — so
+    // the flash reaches it through `tools/hit-flash.js` rather than by
+    // inheritance. Same white: in this game white means "that took a hit".
+    const player = new Player({ x: 100, y: 100 });
+    assert.equal(player.displayColor, PLAYER.color);
+
+    player.takeHit();
+    assert.equal(player.displayColor, HIT_FLASH.color);
+
+    for (let elapsed = 0; elapsed < HIT_FLASH.durationMs; elapsed += FRAME) {
+      player.update(FRAME, { x: 0, y: 0 }, { width: 1300, height: 1200 });
+    }
+    assert.equal(player.hitFlashMs, 0);
+    assert.equal(player.displayColor, PLAYER.color);
+  });
+
+  it("re-arms on the next hit, since there are no invulnerability frames", () => {
+    const player = new Player({ x: 100, y: 100 });
+    player.takeHit();
+    player.update(FRAME, { x: 0, y: 0 }, { width: 1300, height: 1200 });
+    const faded = player.hitFlashMs;
+
+    player.takeHit();
+    assert.ok(player.hitFlashMs > faded, "a second shot must show as a second hit");
   });
 });
 

@@ -13,6 +13,7 @@ import { FONTS, PALETTE } from "./palette.js";
 const LOSS_MESSAGES = Object.freeze({
   [END_REASON.boss]: "Le boss a franchi la ligne.",
   [END_REASON.enemy]: "Un ennemi a franchi la ligne.",
+  [END_REASON.health]: "La tourelle du boss vous a eu.",
 });
 
 const PAD = 20;

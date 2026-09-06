@@ -1,6 +1,6 @@
 import { symbolFor } from "../config/glyphs.js";
-import { HIT_FLASH, clampDelta } from "../config/settings.js";
-import { mixHex } from "../tools/color.js";
+import { HIT_FLASH } from "../config/settings.js";
+import { flashOver, tickFlash } from "../tools/hit-flash.js";
 
 /**
  * Base class for anything that carries a glyph sequence and can be worn down.
@@ -51,8 +51,7 @@ export class Entity {
    * has to land on that frame, which an eased attack would blur.
    */
   get displayColor() {
-    if (this.hitFlashMs <= 0) return this.baseColor;
-    return mixHex(this.baseColor, HIT_FLASH.color, this.hitFlashMs / HIT_FLASH.durationMs);
+    return flashOver(this.baseColor, this.hitFlashMs);
   }
 
   /**
@@ -60,7 +59,7 @@ export class Entity {
    * @param {number} deltaMs
    */
   tickHitFlash(deltaMs) {
-    this.hitFlashMs = Math.max(0, this.hitFlashMs - clampDelta(deltaMs));
+    this.hitFlashMs = tickFlash(this.hitFlashMs, deltaMs);
   }
 
   get centerY() {

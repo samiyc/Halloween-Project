@@ -9,6 +9,7 @@ import { Hud } from "./render/hud.js";
 import { buttonAt, gameOverMenuButton, menuButtons, pauseButton } from "./render/layout.js";
 import { drawMenu } from "./render/menu.js";
 import { Renderer } from "./render/renderer.js";
+import { drawBeam, drawBeamCharge, drawProjectiles, drawTurret } from "./render/turret.js";
 
 /**
  * How long the game-over screen stays up before a press can dismiss it.
@@ -166,21 +167,43 @@ class App {
   drawBoard() {
     const { game, renderer } = this;
     renderer.drawBoss(game.boss);
+    if (game.turret) drawTurret(renderer.ctx, game.turretMount, game.turret.angle);
     for (const enemy of game.enemies) {
       renderer.drawEntity(enemy);
     }
     for (const pickup of game.pickups) {
       renderer.drawPickup(pickup);
     }
+    drawProjectiles(renderer.ctx, game.projectiles);
     // Only spells that cover an area have a range to preview, and only while
     // one is actually held — casting empties the slot and the circle goes.
     const spellRange = spellRangeOf(game.heldSpell);
     if (spellRange !== null) renderer.drawSpellRange(game.player, spellRange);
 
+    this.drawTurretBeam();
     renderer.drawMeleeFlash(game.lastMeleeTargets);
     renderer.drawBuffHalos(game.player);
     renderer.drawPlayer(game.player, game.lastMeleeTargets.length > 0);
     renderer.drawStroke(this.pointer.currentPath());
+  }
+
+  /**
+   * The laser and the dashed tell that precedes it.
+   *
+   * Drawn under the player on purpose: a beam painted over it would hide the
+   * one square the player is watching, exactly while it is being burned.
+   */
+  drawTurretBeam() {
+    const { game, renderer } = this;
+    const turret = game.turret;
+    if (!turret) return;
+
+    if (turret.beam) {
+      drawBeam(renderer.ctx, turret.beam);
+    } else if (turret.isCharging) {
+      const muzzle = turret.muzzle(game.turretMount);
+      drawBeamCharge(renderer.ctx, { ...muzzle, angle: turret.angle });
+    }
   }
 }
 

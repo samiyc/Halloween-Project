@@ -12,7 +12,7 @@ import { RARE_SYMBOLS } from "../src/config/glyphs.js";
 import { HEALTH } from "../src/config/health.js";
 import { MANA } from "../src/config/mana.js";
 import { TIME } from "../src/config/settings.js";
-import { Game } from "../src/game/game.js";
+import { END_REASON, Game } from "../src/game/game.js";
 import { MENU_TOGGLE_COOLDOWN_MS, SCREEN, Session } from "../src/game/session.js";
 import { createSeededRandom } from "../src/tools/random.js";
 
@@ -187,12 +187,48 @@ describe("Medium and Hard", () => {
     assert.equal(hard.rules.spells, true);
   });
 
-  it("leaves the health bar untouched for now", () => {
-    // The boss attack patterns that would drain it are still to be designed.
-    // When one lands, this test is the one that should start failing.
+  it("arms the boss with a turret, and only on Hard", () => {
+    // The turret is gated on `rules.health` rather than a switch of its own:
+    // the bar exists for it, and nothing else can take health.
+    assert.ok(gameOn("hard").turret);
+    assert.equal(gameOn("medium").turret, null);
+    assert.equal(gameOn("easy").turret, null);
+  });
+
+  it("drains the health bar under fire — this is what Hard is for", () => {
+    // The test this replaces was called "leaves the health bar untouched for
+    // now", and said in its own comment that it should fail the day an attack
+    // pattern landed. This is that day.
     const hard = gameOn("hard", 11);
     play(hard, 30);
-    assert.equal(hard.health.value, HEALTH.max);
+    assert.ok(hard.health.value < HEALTH.max, "the boss never landed a shot in 30s");
+  });
+
+  it("never fires a shot on Easy or Normal", () => {
+    for (const mode of ["easy", "medium"]) {
+      const game = gameOn(mode, 11);
+      play(game, 30);
+      assert.deepEqual(game.projectiles, [], `${mode} grew projectiles`);
+      assert.equal(game.health, null);
+    }
+  });
+
+  it("ends the run when the bar empties, naming the turret", () => {
+    // Without the `play()` helper's status reset, because the point here is
+    // precisely that the run ends.
+    const hard = gameOn("hard", 4);
+    hard.health.drain(HEALTH.max - 1);
+    hard.projectiles = [];
+    hard.player.x = hard.boss.centerX;
+    hard.player.y = hard.boss.centerY + 200;
+
+    for (let frame = 0; frame < 60 * 20 && hard.isRunning; frame += 1) {
+      hard.update(FRAME);
+    }
+
+    assert.equal(hard.status, "lost");
+    assert.equal(hard.endedBecause, END_REASON.health);
+    assert.equal(hard.health.value, 0);
   });
 
   it("mirrors the mana gauge, as the spec asks", () => {

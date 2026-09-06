@@ -46,11 +46,13 @@ inside a unit test. Do not reintroduce `ctx` into an entity.
 halloween.html → src/main.js   (the only module aware of both DOM and game)
 src/
   config/    glyphs.js, settings.js, difficulty.js — single source of truth
-  tools/     random.js — the only Math.random() in the repo; color.js
+  tools/     random.js — the only Math.random() in the repo; color.js,
+             aim.js, hit-flash.js
   entities/  Entity → Enemy, Boss, Player   (state + behaviour, no drawing)
+             plus Turret and Projectile, which extend nothing
   game/      session.js (menu/pause), game.js (orchestrator), combat.js,
              spawner.js, gauge.js, collection.js, pickup-spawner.js,
-             effects.js, spellbook.js
+             effects.js, spellbook.js, boss-attacks.js
   engine/    loop.js, keyboard.js, pointer.js, gesture/{geometry,recognizer}.js
   render/    renderer.js, hud.js, menu.js, gauges.js, palette.js — 2D-context
              code, plus layout.js which is pure geometry and has no ctx
@@ -219,10 +221,37 @@ Tune with `MANA.costCommon` first, then `ENEMY.baseSpeed` / `SPAWN.chancePerFram
   spec asked for a bar "symmetric to the mana bar", so it is the same class and
   the same `drawVerticalGauge()`, mirrored.
 
-**Hard currently plays exactly like Normal.** The health bar is displayed full
-and nothing damages it; the boss attack patterns that would are still to be
-designed. The test "leaves the health bar untouched for now" is the one that
-should fail when that changes.
+### The boss turret — what Hard actually adds
+
+`docs/boss-patterns.md` holds the detail and the proposals for further patterns.
+
+The boss carries a dome and a barrel that **tracks the player slowly** and fires
+every 2.5s: a three-shot burst four times in five, a two-second beam the fifth.
+Health can now reach zero, which is a third loss reason beside "an enemy crossed"
+and "the boss crossed".
+
+- **The rotation cap is the mechanic.** Uncapped tracking is a laser sight that
+  nothing outruns, and dodging collapses into taking the damage.
+  `TURRET.rotationDegPerSecond` is the first thing to tune.
+- **There is no spread parameter, and there must not be one.** The barrel keeps
+  tracking through a burst, so a moving player makes the shots fan out on their
+  own. The fan is information: it says the player moved.
+- **The turret holds fire while the boss is invincible** (`canFire`), and re-arms
+  a full cooldown on the way back. The barrel keeps turning throughout, or its
+  return would be a snap with no tell.
+- **`Game` owns the turret, not `Boss`.** It needs the player's position, and the
+  boss must not learn about the player — the same decoupling that fixed enemies
+  reaching into the boss object.
+- Gated on `rules.health`, deliberately with no switch of its own: a
+  `bossAttacks` flag could never differ from it.
+- **`Gauge.drain()` vs `spend()`.** You *pay* mana, you *suffer* damage.
+  `spend()` is all-or-nothing and refuses what it cannot cover, which on a health
+  bar would make a player with 5 HP immortal. `drain()` takes what is there.
+- The turret is the project's **first and only `ctx.rotate()`**: barrel drawn from
+  the origin outward inside `save()/translate(centre)/rotate()/restore()`, so its
+  pivot is exactly the boss centre.
+- A beam or a burst is invisible to browser automation unless the loop is stopped
+  (`app.loop.stop()`) and frames are driven by hand — 500ms is 30 rAF frames.
 
 ### Two coordinate spaces
 
@@ -317,6 +346,11 @@ Losing a symbol lights the square to `HIT_FLASH.color` and fades it back over
 - It is armed in **`Entity.dropFirstSymbol()`**, the single point both damage
   sources funnel through (`decrementSequence` for gestures, `stripSymbol` for the
   melee). Do not arm it at a call site; a new damage source would then miss it.
+  The player is the exception, armed by `Player.takeHit()` from `Game`, because
+  it carries no sequence to lose.
+- The countdown and the blend live in **`tools/hit-flash.js`**, shared by
+  `Entity` and `Player` — the two have no common ancestor, and the player has no
+  business inheriting glyph members just to blink.
 - Subclasses express a lasting tint by overriding **`baseColor`, never
   `displayColor`** — `displayColor` is the flash blended over `baseColor`. That
   is why a frozen enemy still flashes and fades back to blue rather than grey.

@@ -73,6 +73,32 @@ export function randomSequence(rng, length, symbols) {
 }
 
 /**
+ * Picks one entry, favouring the heavier ones.
+ *
+ * `pick()` is uniform, which cannot express "the laser is one attack in five".
+ * Weights are relative, not probabilities: `[4, 1]` and `[40, 10]` behave the
+ * same, so a pattern can be made rarer without rebalancing the others.
+ *
+ * @template T
+ * @param {Rng} rng
+ * @param {readonly {id: T, weight: number}[]} entries  Non-empty; weights ≥ 0.
+ * @returns {T}
+ */
+export function weightedPick(rng, entries) {
+  const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.weight), 0);
+  // All-zero weights would otherwise return undefined rather than an entry.
+  if (total <= 0) return entries[0].id;
+
+  let ticket = rng.range(0, total);
+  for (const entry of entries) {
+    ticket -= Math.max(0, entry.weight);
+    if (ticket < 0) return entry.id;
+  }
+  // Only reachable through floating-point residue at the very top of the range.
+  return entries[entries.length - 1].id;
+}
+
+/**
  * Fisher-Yates shuffle on a copy.
  * @template T
  * @param {Rng} rng

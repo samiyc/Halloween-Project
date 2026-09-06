@@ -123,7 +123,9 @@ export class Renderer {
     ctx.lineWidth = didStrike ? 3 : 1.5;
     ctx.stroke();
 
-    ctx.fillStyle = player.color;
+    // `displayColor` carries the damage blink, the same way an enemy carries
+    // its hit flash. The fallback keeps this working for a bare stub in a test.
+    ctx.fillStyle = player.displayColor ?? player.color;
     ctx.fillRect(player.x, player.y, player.size, player.size);
   }
 

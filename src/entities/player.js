@@ -1,6 +1,7 @@
-import { PLAYER, clampDelta, toFrames } from "../config/settings.js";
+import { HIT_FLASH, PLAYER, clampDelta, toFrames } from "../config/settings.js";
 import { SPELLS } from "../config/spells.js";
 import { EffectTracker } from "../game/effects.js";
+import { flashOver, tickFlash } from "../tools/hit-flash.js";
 
 /**
  * The green square. Moved with ZQSD (and the arrow keys), it is the positional
@@ -27,6 +28,8 @@ export class Player {
     this.x = x;
     this.y = y;
     this.effects = new EffectTracker();
+    /** Milliseconds left on the damage blink; see `displayColor`. */
+    this.hitFlashMs = 0;
     /** Milliseconds until the next auto-attack. */
     this.meleeCooldownMs = traits.meleeCooldownMs;
     /**
@@ -46,6 +49,22 @@ export class Player {
 
   get meleeRange() {
     return this.traits.meleeRange;
+  }
+
+  /**
+   * Green normally, washed pale for a moment after taking a hit.
+   *
+   * The same white as an enemy losing a symbol, on purpose: in this game white
+   * means "that just took damage", whichever side it belongs to. A red blink
+   * would read as a different event.
+   */
+  get displayColor() {
+    return flashOver(this.color, this.hitFlashMs);
+  }
+
+  /** Called when something lands on the player. There are no i-frames. */
+  takeHit() {
+    this.hitFlashMs = HIT_FLASH.durationMs;
   }
 
   /** Pixels per 60 Hz frame, after buffs. */
@@ -78,6 +97,7 @@ export class Player {
   update(deltaMs, direction, bounds) {
     const frames = toFrames(deltaMs);
     this.effects.tick(deltaMs);
+    this.hitFlashMs = tickFlash(this.hitFlashMs, deltaMs);
     // Clamped like the movement below: an unclamped delta after a tab switch
     // would recharge the melee instantly instead of after the real 1.5s.
     this.meleeCooldownMs = Math.max(0, this.meleeCooldownMs - clampDelta(deltaMs));

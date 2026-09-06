@@ -71,6 +71,8 @@ composent au lieu de s'écraser.
 
 - **Gagné** quand le boss termine sa dernière retraite sans vie restante.
 - **Perdu** dès qu'une entité franchit le bas du canvas — ennemi ou boss.
+- **Perdu** aussi quand la barre de vie se vide, en Difficile uniquement : c'est
+  la tourelle du boss qui l'entame. Voir [boss-patterns.md](boss-patterns.md).
 
 La condition est évaluée **une fois par frame**, à la fin. L'ancienne version la
 testait à l'intérieur de la boucle de dessin : deux ennemis franchissant le bord
@@ -104,6 +106,20 @@ ferait disparaître alors qu'il est encore à l'écran.
 Effet de bord conservé de la version d'origine : quand le boss n'a plus de vie,
 les ennemis **font demi-tour et remontent**. La fenêtre où c'est visible est
 courte — la retraite finale — après quoi la partie est gagnée.
+
+### Sa tourelle, en Difficile
+
+Le boss porte un dôme et un canon qui pivote lentement vers le héros, et tire
+toutes les 2,5 s : une rafale de trois projectiles quatre fois sur cinq, un rayon
+de deux secondes la cinquième. Encaisser fait clignoter le héros en blanc et
+descendre la barre de vie ; à zéro, la partie est perdue.
+
+**La tourelle se tait pendant la retraite.** Le canon continue de pivoter, mais
+un boss à la fois intouchable et armé cumulerait les deux pressions au seul
+moment où le joueur ne peut rien y faire.
+
+Les patterns, leurs valeurs et les suivants envisagés :
+[boss-patterns.md](boss-patterns.md).
 
 ## Les ennemis rares
 
@@ -202,6 +218,19 @@ aussi plus de temps.
 | --- | --- |
 | `HIT_FLASH.durationMs` | 100 — assez court pour que deux coups ne se confondent pas |
 | `HIT_FLASH.color` | `#F2F6F8`, blanc cassé |
+
+### Tourelle du boss (Difficile)
+
+Le tableau complet est dans [boss-patterns.md](boss-patterns.md) ; l'essentiel :
+
+| Réglage | Valeur |
+| --- | --- |
+| `TURRET.rotationDegPerSecond` | 90 — **le levier principal** |
+| `TURRET.cooldownMs` | 2500 |
+| `PROJECTILE.speed` / `damage` / `radius` | 6 / 10 / 10 |
+| `VOLLEY.shots` / `shotIntervalMs` | 3 / 250 |
+| `LASER.chargeMs` / `durationMs` / `dps` | 500 / 2000 / 5 |
+| Poids des patterns | rafale 4, rayon 1 |
 
 ## Un point d'équilibrage à surveiller
 

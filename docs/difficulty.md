@@ -41,16 +41,24 @@ là :
 Le HUD lit `game.rules` : ce qui n'existe pas dans le mode n'est pas dessiné.
 En Facile il ne reste donc que le score, la mêlée et les quatre glyphes communs.
 
-## ⚠️ Difficile ≡ Normal, pour l'instant
+## Ce que Difficile ajoute vraiment
 
-Les patterns d'attaque du boss restent à concevoir. La barre de vie est
-**affichée au maximum et rien ne l'entame** — c'est le socle, pas la mécanique.
+Le boss porte une **tourelle** qui vise le héros et lui tire dessus. La barre de
+vie n'est donc plus un décor : elle descend, et à zéro la partie est perdue —
+une troisième raison de défaite à côté de « un ennemi est passé » et « le boss
+est passé ».
 
-Tant que rien n'attaque le héros, **Difficile se joue exactement comme Normal**.
-Mesuré : 10/10 victoires dans les deux modes, score moyen identique (23,2).
+Voir [boss-patterns.md](boss-patterns.md) pour les deux patterns, leurs valeurs
+et les propositions suivantes.
 
-Le test « leaves the health bar untouched for now » est celui qui devra tomber
-le jour où un pattern d'attaque arrive.
+> Cette section remplace un avertissement « ⚠️ Difficile ≡ Normal, pour
+> l'instant » : les patterns d'attaque restaient à concevoir et la barre était
+> affichée pleine sans que rien ne l'entame. Le test qui gardait ce trou,
+> « leaves the health bar untouched for now », a été remplacé par son inverse.
+
+La tourelle est **branchée sur la règle `health`**, sans commutateur à elle. Un
+`bossAttacks` ne pourrait jamais valoir autre chose : la barre n'existe que pour
+la tourelle, et rien d'autre ne peut retirer des points de vie.
 
 ## Le menu
 
@@ -120,6 +128,9 @@ reçoit le point canvas et refuse la zone du bouton.
 | `src/render/layout.js` | **Rectangles purs** des boutons, sans `ctx` |
 | `src/render/menu.js` | L'écran de menu et le style de bouton |
 | `src/render/gauges.js` | `drawVerticalGauge()` — mana **et** vie |
+| `src/config/turret.js` | Les réglages de la tourelle et de ses deux patterns |
+| `src/entities/turret.js` | La machine à états : vise, choisit, tire |
+| `src/game/boss-attacks.js` | Projectiles et rayon contre le héros, en pur |
 
 `layout.js` est le pivot : la même géométrie sert au dessin **et** au test de
 clic, donc un bouton ne peut pas être dessiné là où il n'est pas cliquable. Et
