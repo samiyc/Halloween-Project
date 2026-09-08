@@ -1,4 +1,5 @@
 import { DIFFICULTIES, DIFFICULTY_IDS } from "../config/difficulty.js";
+import { LEVELS } from "../config/levels.js";
 import { CANVAS, SIDEBAR } from "../config/settings.js";
 
 /**
@@ -11,10 +12,19 @@ import { CANVAS, SIDEBAR } from "../config/settings.js";
  * actually check.
  *
  * @typedef {{x: number, y: number, width: number, height: number}} Rect
- * @typedef {{id: string, label: string, hint?: string, rect: Rect, enabled: boolean}} Button
+ * @typedef {{id: string, kind?: string, levelId?: string, label: string,
+ *   hint?: string, rect: Rect, enabled: boolean}} Button
+ *
+ * `kind` is what the click handler branches on — "difficulty", "resume",
+ * "level" or "info" — rather than parsing an id back apart.
  */
 
-const MENU_BUTTON = Object.freeze({ width: 460, height: 96, gap: 24 });
+const MENU_BUTTON = Object.freeze({ width: 460, height: 96, gap: 20 });
+/** The small square that unfolds an episode's story. Not a launch button. */
+const INFO_BUTTON = Object.freeze({ size: 56, gap: 12 });
+const COLUMN_GAP = 60;
+/** Top of both menu columns; the title and the subtitle sit above it. */
+const MENU_TOP = 250;
 const PAD = 20;
 
 /**
@@ -81,21 +91,36 @@ export function buttonLines({ rect, hint }) {
 }
 
 /**
- * The menu's four buttons, stacked and centred.
+ * Where the two columns start.
+ *
+ * The info buttons are counted in the total width, so the block stays optically
+ * centred instead of leaning left by half a small square.
+ *
+ * @returns {{training: number, story: number, info: number, width: number}}
+ */
+export function menuColumns() {
+  const { width } = MENU_BUTTON;
+  const total = 2 * width + COLUMN_GAP + INFO_BUTTON.gap + INFO_BUTTON.size;
+  const training = (CANVAS.width - total) / 2;
+  const story = training + width + COLUMN_GAP;
+  return { training, story, info: story + width + INFO_BUTTON.gap, width };
+}
+
+/**
+ * The left column: the three training modes, then "back to the game".
  *
  * @param {{canResume: boolean}} session
  * @returns {Button[]}
  */
-export function menuButtons({ canResume }) {
+export function trainingButtons({ canResume }) {
   const { width, height, gap } = MENU_BUTTON;
-  const rows = DIFFICULTY_IDS.length + 1;
-  const total = rows * height + (rows - 1) * gap;
-  const x = (CANVAS.width - width) / 2;
-  let y = (CANVAS.height - total) / 2;
+  const x = menuColumns().training;
+  let y = MENU_TOP;
 
   const buttons = DIFFICULTY_IDS.map((id) => {
     const button = {
       id,
+      kind: "difficulty",
       label: DIFFICULTIES[id].name,
       hint: DIFFICULTIES[id].summary,
       rect: { x, y, width, height },
@@ -107,12 +132,134 @@ export function menuButtons({ canResume }) {
 
   buttons.push({
     id: "resume",
+    kind: "resume",
     label: "Retour au jeu",
     hint: canResume ? "Reprend la partie en cours" : "Aucune partie en cours",
     rect: { x, y, width, height },
     enabled: canResume,
   });
   return buttons;
+}
+
+/**
+ * The centre column: one button per story episode.
+ *
+ * A locked episode is drawn greyed and swallows nothing — `buttonAt()` already
+ * skips disabled buttons, so it behaves like empty space, exactly like a
+ * "Retour au jeu" with nothing to resume.
+ *
+ * @param {{isUnlocked: (id: string) => boolean, isCompleted: (id: string) => boolean}} [progress]
+ *   Missing progress means a fresh campaign: only the first episode is open.
+ * @returns {Button[]}
+ */
+export function storyButtons(progress) {
+  const { width, height, gap } = MENU_BUTTON;
+  const x = menuColumns().story;
+
+  return LEVELS.map((level, index) => {
+    const unlocked = progress?.isUnlocked(level.id) ?? index === 0;
+    return {
+      id: `level:${level.id}`,
+      kind: "level",
+      levelId: level.id,
+      label: unlocked ? level.name : "— verrouillé —",
+      hint: storyHint(level, progress, unlocked),
+      rect: { x, y: MENU_TOP + index * (height + gap), width, height },
+      enabled: unlocked,
+    };
+  });
+}
+
+/**
+ * The little square beside each open episode. It launches nothing: it unfolds
+ * the story text under the menu.
+ *
+ * @param {{isUnlocked: (id: string) => boolean, isCompleted: (id: string) => boolean}} [progress]
+ * @returns {Button[]}
+ */
+export function infoButtons(progress) {
+  const { size } = INFO_BUTTON;
+  const x = menuColumns().info;
+
+  return storyButtons(progress)
+    .filter((button) => button.enabled)
+    .map((button) => ({
+      id: `info:${button.levelId}`,
+      kind: "info",
+      levelId: button.levelId,
+      label: "i",
+      rect: { x, y: button.rect.y + (button.rect.height - size) / 2, width: size, height: size },
+      enabled: true,
+    }));
+}
+
+/**
+ * Everything clickable on the menu screen, in one list, so the click handling
+ * and the drawing walk the same thing.
+ *
+ * @param {{canResume: boolean, progress?: object}} session
+ * @returns {Button[]}
+ */
+export function menuButtons(session) {
+  return [
+    ...trainingButtons(session),
+    ...storyButtons(session.progress),
+    ...infoButtons(session.progress),
+  ];
+}
+
+/**
+ * @param {import("../config/levels.js").Level} level
+ * @param {object} [progress]
+ * @param {boolean} unlocked
+ * @returns {string}
+ */
+function storyHint(level, progress, unlocked) {
+  if (!unlocked) return "Gagnez l'épisode précédent";
+  return progress?.isCompleted(level.id) ? "Terminé — rejouable" : "Nouvel épisode";
+}
+
+/**
+ * The panel under the menu where an episode's story is written.
+ * @returns {Rect}
+ */
+export function storyPanel() {
+  const columns = menuColumns();
+  const { height, gap } = MENU_BUTTON;
+  const top = MENU_TOP + LEVELS.length * (height + gap) + 40;
+  return {
+    x: columns.training,
+    y: top,
+    width: columns.info + INFO_BUTTON.size - columns.training,
+    height: CANVAS.height - top - 60,
+  };
+}
+
+/**
+ * Breaks a paragraph into lines of at most `maxChars` characters.
+ *
+ * A character count rather than `ctx.measureText()`, on purpose: the menu fonts
+ * are fixed, and a pure function is one a test can check. Measuring would move
+ * the only wrapping rule into the drawing code, where nothing can reach it.
+ *
+ * @param {string} text
+ * @param {number} maxChars
+ * @returns {string[]}
+ */
+export function wrapLines(text, maxChars) {
+  const lines = [];
+  let line = "";
+
+  for (const word of String(text).split(/\s+/).filter(Boolean)) {
+    if (line && line.length + 1 + word.length > maxChars) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
 }
 
 /**

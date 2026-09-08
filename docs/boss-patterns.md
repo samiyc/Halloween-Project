@@ -3,6 +3,12 @@
 > Mode **Difficile** uniquement. C'est ce qui donne enfin un sens à la barre de
 > vie, et ce qui distingue Difficile de Normal.
 
+> **Réglage arrêté.** Les valeurs de cette page sont celles obtenues après une
+> longue série de parties : la tourelle manquait de menace et la phase 3 était
+> trop courte. Difficile et ses quatre patterns sont considérés terminés — ce
+> qui vient ensuite sont de **nouveaux** boss pour le mode histoire, pas une
+> nouvelle passe sur celui-ci. Voir [story-mode.md](story-mode.md).
+
 ## Ce qui est implémenté
 
 Le boss porte une tourelle : un dôme centré sur lui et un canon qui **pivote
@@ -13,10 +19,10 @@ choisi au sort **dans la table de sa phase**.
 
 | | Rafale | Rayon | Spirale | Gros projectile |
 | --- | --- | --- | --- | --- |
-| Phases | 1, 2, 3 | 1 et 3 | 2 et 3 | 2 et 3 |
-| Durée | 3 tirs à 250 ms (500 ms) | amorce 500 ms + 2 s | 25 tirs à 100 ms (2,5 s) | un seul tir |
-| Dégâts | 10 par tir, jusqu'à **30** | 10 par seconde, jusqu'à **20** | 10 par tir | **50** |
-| Rotation | 90°/s, suit le héros | **15°/s**, suit le héros | 162°/s, **aveugle** | 90°/s, suit le héros |
+| Phases | 1 et 2 | 1 et 3 | 3 | 2 |
+| Durée | 5 tirs à 200 ms (800 ms) | amorce 500 ms + 2 s | ~43 tirs à 35 ms (1,5 s) | 3 tirs à 800 ms |
+| Dégâts | 10 par tir, jusqu'à **50** | 15 par seconde, jusqu'à **30** | 10 par tir | **50** par disque |
+| Rotation | 90°/s, suit le héros | **10°/s**, suit le héros | 253°/s, **aveugle** | 90°/s, suit le héros |
 | Cooldown après | 2500 ms | 2500 ms | 2500 ms | **1500 ms** |
 | Ce qu'elle demande | bouger avant le tir | quitter l'axe et rester dehors | sortir de la spirale par l'extérieur | ne jamais la toucher |
 
@@ -26,16 +32,22 @@ La phase se lit sur les vies du boss : **1** à trois vies, **2** à deux, **3**
 une. `Boss.phaseNumber` la calcule, la tourelle la reçoit à chaque frame, et
 `patternsForPhase()` en tire la table.
 
-| Phase | Table | Chaque attaque rare |
+| Phase | Table | Ce qui tombe |
 | --- | --- | --- |
-| 1 | rafale 4, rayon 1 | rayon 1/5 |
-| 2 | rafale 3, spirale 1, gros 1 | 1/5 chacune |
-| 3 | rafale 2, spirale 1, gros 1, rayon 1 | 1/5 chacune |
+| 1 | rafale 2, rayon 1 | rayon 1/3 |
+| 2 | rafale 1, gros 1 | gros 1/2 |
+| 3 | spirale 1, rayon 1 | 1/2 chacune, **plus aucune rafale** |
 
-**La rafale de trois est dans les trois phases et ne change jamais.** C'est la
-ligne de base à laquelle tout le reste est comparé ; le rayon est la signature
-de la phase 1, la spirale prend sa place en phase 2, et la dernière phase est la
-seule où les quatre peuvent tomber.
+**L'escalade, c'est le retrait de la rafale.** Elle occupe deux tirages sur
+trois en phase 1, un sur deux en phase 2, et disparaît complètement en phase 3 :
+la dernière vie du boss ne se joue que contre ses deux attaques rares. Une
+première version la gardait dans les trois phases, comme constante à laquelle
+lire les autres ; à l'usage c'est l'inverse qui fonctionne — voir la dernière
+attaque ordinaire disparaître est ce qui fait sentir qu'on est à la fin.
+
+Chaque phase a par ailleurs sa signature : le rayon ouvre le combat et revient
+le fermer, le gros projectile n'existe qu'au milieu, la spirale n'appartient
+qu'à la fin.
 
 ### La rotation lente est la mécanique — et elle est par attaque
 
@@ -45,20 +57,25 @@ un viseur laser : aucune course ne le sèmerait, et « esquiver » deviendrait
 
 Mais un plafond unique ne suffisait pas. **Le rayon n'a rien à anticiper** : il
 lui suffit de continuer à pointer, donc à 90°/s il restait collé au héros et
-était impossible à fuir. Il tourne désormais à **15°/s**, un sixième — et c'est
-précisément parce qu'on peut en sortir qu'il peut se permettre de faire deux
-fois plus mal (5 → **10 dps**).
+était impossible à fuir. Il tourne désormais à **10°/s**, un neuvième — et c'est
+précisément parce qu'on peut en sortir qu'il peut se permettre de faire trois
+fois le mal d'un projectile (5 → 10 → **15 dps**, soit 30 pv pour un passage
+complet).
 
 Chaque pattern peut donc déclarer son `rotationDegPerSecond` ; à défaut il prend
 celui de `TURRET`. La spirale est un cas à part : elle ne suit pas, elle balaie.
 
 ### La spirale balaie, elle ne vise pas
 
-405° — un tour plus 45° — en 2,5 s, soit 162°/s, en tirant toutes les 100 ms.
-Le canon **ignore complètement le héros** pendant ce temps : une spirale qui
-suivrait ne serait qu'une rafale très rapide.
+380° — un tour plus 20° — en 1,5 s, soit 253°/s, en tirant toutes les 35 ms :
+une quarantaine de projectiles jetés en travers du terrain. Le canon **ignore
+complètement le héros** pendant ce temps : une spirale qui suivrait ne serait
+qu'une rafale très rapide.
 
-Les 45° en trop comptent : sans eux le bras se refermerait exactement sur son
+C'est de loin l'attaque la plus dense du jeu, et c'est pour ça qu'elle
+n'appartient qu'à la dernière phase.
+
+Les 20° en trop comptent : sans eux le bras se refermerait exactement sur son
 départ et formerait un anneau plein. Décalé, les derniers tirs tombent **entre**
 les premiers et laissent un passage. Le sens de rotation est tiré au sort à
 chaque lancement, pour qu'on ne puisse pas apprendre le bras par cœur.
@@ -74,15 +91,17 @@ n'est jamais un test de réflexe : c'est **un morceau de terrain interdit qui
 dérive vers vous**. Il porte un liseré jaune vif, parce que la taille seule se
 lit comme « proche » et non comme « mortel ».
 
-Son cooldown est court (1500 ms), mais il ne sort qu'une fois sur cinq, donc en
-pratique un toutes les douze secondes environ.
+Ils partent désormais par **trois, espacés de 800 ms** : ce n'est plus un disque
+à contourner mais un couloir qui se referme, et les trois ensemble valent la
+barre entière. C'est ce qui fait exister la phase 2, où il tombe une fois sur
+deux, avec en plus son cooldown court (1500 ms au lieu de 2500).
 
 ### L'éventail n'est pas un paramètre
 
-Les trois projectiles d'une rafale partent avec des angles légèrement
+Les cinq projectiles d'une rafale partent avec des angles légèrement
 différents, mais il n'existe **aucun réglage de dispersion**. Le canon continue
 simplement de suivre le héros pendant la rafale : si le héros bouge, la rafale
-s'ouvre ; s'il ne bouge pas, les trois tirs se suivent en file. L'éventail est
+s'ouvre ; s'il ne bouge pas, les cinq tirs se suivent en file. L'éventail est
 donc une information — il dit que le joueur s'est déplacé au bon moment.
 
 ### L'amorce du rayon
@@ -104,17 +123,18 @@ venir n'est pas une attaque, c'est une taxe.**
 | `TURRET.circleRatio` / `cannonRatio` / `cannonWidthRatio` | 0,30 / 0,55 / 0,14 | Fractions de `boss.size`, donc rétrécit avec le boss |
 | `PROJECTILE.radius` | 10 | Exactement une bille de mana |
 | `PROJECTILE.speed` | 6 px/frame (360 px/s) | **Le deuxième levier** |
-| `PROJECTILE.damage` | 10 | Rafale complète = 30 pv sur 150 |
-| `VOLLEY.shots` / `shotIntervalMs` | 3 / 250 | Intouché : c'est la ligne de base |
+| `PROJECTILE.damage` | 10 | Rafale complète = 50 pv sur 150 |
+| `VOLLEY.shots` / `shotIntervalMs` | 5 / 200 | La ligne de base — et ce qu'on retire en phase 3 |
 | `LASER.chargeMs` / `durationMs` | 500 / 2000 | |
-| `LASER.rotationDegPerSecond` | **15** | Sinon le rayon reste collé au héros |
-| `LASER.dps` | **10** | Un passage complet = 20 pv, deux projectiles |
-| `LASER.beamWidth` | 18 | La largeur de la jauge de mana ; un test le vérifie |
-| `SPIRAL.sweepDegrees` / `durationMs` | 405 / 2500 | 162°/s, dérivé — jamais écrit deux fois |
-| `SPIRAL.shotIntervalMs` | 100 | 25 projectiles par spirale |
+| `LASER.rotationDegPerSecond` | **10** | Sinon le rayon reste collé au héros |
+| `LASER.dps` | **15** | Un passage complet = 30 pv, trois projectiles |
+| `LASER.beamWidth` | 22 | Plus large que la jauge de mana (18), qui reste le plancher testé |
+| `SPIRAL.sweepDegrees` / `durationMs` | 380 / 1500 | 253°/s, dérivé — jamais écrit deux fois |
+| `SPIRAL.shotIntervalMs` | 35 | Une quarantaine de projectiles par spirale |
 | `SPIRAL.shot.speed` | 3 px/frame | Moitié d'un tir visé |
-| `HEAVY.shot.radius` / `damage` / `speed` | 50 / 50 / 2 | ×5, un tiers de la barre |
-| `HEAVY.cooldownMs` | 1500 | Court, mais une fois sur cinq |
+| `HEAVY.shots` / `shotIntervalMs` | 3 / 800 | Un couloir qui se referme, pas un disque |
+| `HEAVY.shot.radius` / `damage` / `speed` | 50 / 50 / 2 | ×5, un tiers de la barre par disque |
+| `HEAVY.cooldownMs` | 1500 | Le sien, plus court que les 2500 partagés |
 | Poids | voir la table des phases | |
 
 ### Les règles qui ne se voient pas
@@ -130,8 +150,8 @@ venir n'est pas une attaque, c'est une taxe.**
   > que sa reprise soit lisible. Elle l'était, mais elle mentait : un canon qui
   > suit se lit comme un canon qui va tirer.
 - **Aucune invulnérabilité après un impact.** Une rafale entière qui touche coûte
-  bien 30 pv. C'est le prix de ne pas avoir bougé, et c'est ce qui fait de la
-  rotation lente une vraie fenêtre.
+  bien ses 50 pv, un tiers de la barre. C'est le prix de ne pas avoir bougé, et
+  c'est ce qui fait de la rotation lente une vraie fenêtre.
 - **Les projectiles sortent par les quatre bords.** Une bille de mana ne fait que
   tomber, un projectile va où il a été tiré.
 - **Le rayon ne blesse pas derrière le canon.** La distance est mesurée sur une

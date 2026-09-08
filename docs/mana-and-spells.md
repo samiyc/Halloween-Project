@@ -34,11 +34,13 @@ personnage devient la source de cette ressource.** Le déplacement n'est plus un
 | Mêlée automatique | **gratuite** | — |
 | Sort du bonus jaune | **gratuit** | — |
 
-Jauge : **max 150**, **démarre à 20**, régénération passive de **1 pt / 0,5 s**
+Jauge : **max 150**, **démarre vide**, régénération passive de **1 pt / 0,5 s**
 (soit 2 pts/s). Une bille bleue vaut **5 pts**.
 
-Le départ à 20 laisse de quoi lancer deux gestes communs sans rien avoir
-ramassé : de quoi réagir à la première vague, pas de quoi se passer de collecte.
+Le départ à zéro fait des premières secondes une collecte plutôt qu'un tir
+gratuit : le premier geste se gagne. La régénération suffit à en offrir un au
+bout de quatre secondes même sans ramasser une seule bille, donc ce n'est jamais
+un blocage.
 
 ### Ce que la simulation a corrigé
 
@@ -114,8 +116,14 @@ Deux constats contre-intuitifs. D'abord la zone jouable **grandit de 44 %**
 baisse — les billes sont plus dispersées — **sans que la difficulté augmente**,
 parce que le terrain 33 % plus haut ralentit autant la menace que la collecte.
 
-À retenir : la géométrie **n'apporte pas** de mana. Ce sont `max: 150` et
-`start: 20` qui l'ont fait.
+À retenir : la géométrie **n'apporte pas** de mana. C'est `max: 150` qui l'a
+fait.
+
+> **`start` est passé à 0.** La jauge démarrait à 20 — de quoi lancer deux
+> gestes avant d'avoir ramassé quoi que ce soit. Elle démarre vide : les
+> premières secondes sont désormais une collecte, pas un tir gratuit, et la
+> régénération de 2 pts/s reste le plancher anti-blocage. Le commentaire du code
+> annonçait déjà « la jauge démarre vide » ; la valeur le dit enfin.
 
 ### Le geste raté doit coûter
 
@@ -233,7 +241,7 @@ dépenser de la mana pour en gagner.
 | **Frénésie** | vitesse d'attaque mêlée ×1,5 — cooldown 1500 → 1000 ms | 8 s | **orange** : emplacement + halo |
 | **Givre** | ennemis dans un rayon de **320 px** ralentis ×0,5 | 8 s | **cyan** : emplacement, cercle en pointillés, ennemis gelés |
 | **Célérité** | vitesse de déplacement ×1,5 — 4 → 6 px/frame | 8 s | **magenta** : emplacement + halo |
-| **Grande potion** | +50 pts de mana | instantané | **vert** : emplacement |
+| **Grande potion** | +30 pts de mana | instantané | **vert** : emplacement |
 
 Rayon du givre : **320 px**, soit un peu plus de quatre fois la portée de mêlée
 (75 px) — un vrai outil de zone, pas un doublon.
@@ -248,8 +256,11 @@ donc quels ennemis seront pris *avant* de dépenser le sort, ce qui transforme
 « lancer et espérer » en décision de placement. Il disparaît de lui-même au
 lancement, puisque l'emplacement se vide.
 
-La potion à +50 représente la moitié de la jauge, soit 5 sorts communs. C'est
-volontairement fort : elle doit rester un tirage qu'on est content d'avoir.
+La potion donne **+30**, soit un cinquième de la jauge et un peu moins de quatre
+gestes communs. Elle a démarré à +50 — la moitié de la jauge — et c'était trop :
+une bille jaune remplaçait une minute de collecte, donc le seul vrai tirage
+malchanceux était de ne pas tomber dessus. À +30 elle reste un tirage qu'on est
+content d'avoir sans effacer l'économie qu'elle est censée soulager.
 
 ### Le code couleur
 

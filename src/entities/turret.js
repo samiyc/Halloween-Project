@@ -167,8 +167,8 @@ export class Turret {
    * One shot, leaving the muzzle along the current angle.
    *
    * Fired at wherever the barrel points *now*, not at a stored aim: the barrel
-   * keeps tracking through a burst, so a moving player makes the three shots
-   * fan out on their own. The spread is the tracking, not a parameter.
+   * keeps tracking through a burst, so a moving player makes the shots of a
+   * volley fan out on their own. The spread is the tracking, not a parameter.
    *
    * @param {{x: number, y: number, size: number}} origin
    * @returns {Projectile}
@@ -262,7 +262,7 @@ export class Turret {
    *
    * The direction is rolled, so the arm cannot be learned once and dodged the
    * same way every run. The rate is derived from the sweep and the duration
-   * rather than written twice — 405° over 2.5 s is 162°/s, and stating both
+   * rather than written twice — 380° over 1.5 s is 253°/s, and stating both
    * would let them drift apart.
    */
   startSweep() {

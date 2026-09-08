@@ -46,9 +46,9 @@ export const SPELLS = Object.freeze({
   potion: Object.freeze({
     id: "potion",
     name: "Grande potion",
-    hint: "+50 mana",
+    hint: "+30 mana",
     durationMs: 0,
-    manaGain: 50,
+    manaGain: 30,
   }),
 });
 

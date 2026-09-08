@@ -1,9 +1,13 @@
-# Magic Spell Game
+# Spell Blaster 3000
 
-Jeu navigateur : des formes tombent du haut d'un canvas HTML5. On les détruit en
-traçant à la souris le geste correspondant au **premier symbole** de la séquence
-affichée au-dessus d'elles. Un personnage vert, déplacé au clavier, ajoute une
-attaque de mêlée automatique à courte portée.
+Jeu navigateur : la magie contre les machines. Des robots tombent du haut d'un
+canvas HTML5 ; on les détruit en traçant à la souris le geste correspondant au
+**premier symbole** de la séquence affichée au-dessus d'eux. Un personnage vert
+— magicien ou magicienne —, déplacé au clavier, ajoute une attaque de mêlée
+automatique à courte portée.
+
+L'univers est décrit dans [docs/lore.md](docs/lore.md) ; le fichier d'entrée
+s'appelle encore `halloween.html`, du nom du thème d'origine.
 
 JavaScript vanilla, modules ES, **aucune étape de build**.
 
@@ -56,15 +60,20 @@ aucune dépendance runtime).
 | Clic gauche | Recommence la partie une fois l'écran de fin affiché |
 | Bouton « Pause / Menu » | En haut du bandeau droit : même effet qu'Échap |
 
-Le jeu s'ouvre sur un **menu de difficulté** : Facile, Normal, Difficile. Les
-modes n'ajustent aucun chiffre, ils activent les mécaniques une par une —
-Facile n'a ni mana ni sorts ni ennemis rares, Normal est le jeu complet,
-Difficile y ajoute une barre de vie. Détail dans
-[docs/difficulty.md](docs/difficulty.md).
+Le jeu s'ouvre sur un menu en deux colonnes.
+
+- **Entraînement**, à gauche : Facile, Normal, Difficile. Les modes n'ajustent
+  aucun chiffre, ils activent les mécaniques une par une — Facile n'a ni mana ni
+  sorts ni ennemis rares, Normal est le jeu complet, Difficile y ajoute une
+  barre de vie. Détail dans [docs/difficulty.md](docs/difficulty.md).
+- **Histoire**, au centre : des épisodes nommés qui se débloquent l'un après
+  l'autre, sauvegardés dans le navigateur, avec un paragraphe d'histoire à la
+  victoire et un petit bouton info pour le relire. Le boss y arrive après une
+  trentaine de secondes. Détail dans [docs/story-mode.md](docs/story-mode.md).
 
 Les gestes coûtent de la **mana** : 8 points, 24 pour l'éclair et la spirale. On
 la ramasse en **billes bleues** avec le personnage ; la jauge monte à 150 et
-démarre à 20. Un
+**démarre vide**. Un
 geste reconnu est facturé **même s'il ne touche rien**, ce qui récompense la
 précision. La mêlée, elle, reste gratuite. Une **orbe jaune** tombe toutes les
 15-20 s et offre un sort tiré au hasard parmi quatre. Quand le sort en réserve
@@ -86,9 +95,9 @@ par-dessus le jeu.
 ```
 ┌────────────┬──────────────────────┬────────────┐
 │ Sort       │                      │ Gestes     │
-│ Fantômes   │     zone jouable     │            │
-│ Mêlée      │      1300×1200       │            │
-│       Mana │                      │            │
+│ Robots     │     zone jouable     │            │
+│ Mêlée      │      1300×1200       │ Mission    │
+│       Mana │                      │       Vie  │
 └────────────┴──────────────────────┴────────────┘
      300              1300               300
 ```
@@ -105,6 +114,10 @@ renderer translate, le pointeur retranche l'offset.
 | Fichier | Contenu |
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Carte des modules, règles de dépendance, comment ajouter une entité |
+| [docs/lore.md](docs/lore.md) | **L'univers** : la magie contre les machines, les artefacts, l'arc narratif |
+| [docs/story-mode.md](docs/story-mode.md) | **Le mode histoire** : épisodes, phases, déblocage, sauvegarde, menu |
+| [docs/content-proposals.md](docs/content-proposals.md) | Propositions pour la suite : symboles, bonus, boss, environnements |
+| [docs/boss-patterns.md](docs/boss-patterns.md) | La tourelle du boss, ses quatre attaques et ses phases |
 | [docs/gestures.md](docs/gestures.md) | Reconnaissance des gestes, seuils, **comment ajouter un geste** |
 | [docs/difficulty.md](docs/difficulty.md) | **Les trois modes**, le menu, la pause |
 | [docs/gameplay.md](docs/gameplay.md) | Règles, cycle du boss, tous les paramètres réglables |
@@ -120,10 +133,10 @@ halloween.html          point d'entrée (un seul <script>)
 styles/                 CSS
 src/
   main.js               câblage DOM ↔ jeu (le seul module qui connaît les deux)
-  config/               glyphes et réglages — la vérité unique
-  engine/               boucle, entrées, reconnaissance de gestes
+  config/               glyphes, réglages, niveaux — la vérité unique
+  engine/               boucle, entrées, gestes, accès au localStorage
   entities/             Entity, Enemy, Boss, Player — état et comportement
-  game/                 orchestration, combat, spawn
+  game/                 orchestration, combat, spawn, progression
   render/               tout ce qui touche au contexte 2D
   tools/                générateur aléatoire injectable
 tests/                  node:test
@@ -135,9 +148,16 @@ docs/
 Ouvrir `halloween.html?debug` expose la partie en cours dans la console :
 
 ```js
-__magicSpell.game.enemies      // ennemis à l'écran
-__magicSpell.game.boss.phase   // "descending" ou "retreating"
+__magicSpell.game.enemies      // robots à l'écran
+__magicSpell.game.boss.phase   // "waiting", "descending" ou "retreating"
 __magicSpell.game.player       // position, cooldown de mêlée
+__magicSpell.session.progress  // niveaux débloqués et terminés
 ```
 
 Sans `?debug`, la page n'expose rien.
+
+Pour repartir d'une campagne vierge :
+
+```js
+localStorage.removeItem("spellblaster.progress");   // puis recharger
+```

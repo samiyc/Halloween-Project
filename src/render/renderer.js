@@ -102,7 +102,7 @@ export class Renderer {
     const lives = `${boss.lives} ${boss.lives === 1 ? "vie" : "vies"}`;
     const state = boss.isInvincible ? " — invincible" : "";
     ctx.fillText(
-      `Angry boss — ${lives}${state}`,
+      `Machine-mère — ${lives}${state}`,
       boss.x + boss.size / 2,
       boss.y + boss.size + 15,
     );

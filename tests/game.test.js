@@ -452,15 +452,18 @@ describe("Game mana economy", () => {
       orb.y = game.player.centerY;
       game.pickups = [orb];
       game.update(FRAME);
+      return orb;
     };
 
     drop();
     assert.ok(SPELL_IDS.includes(game.heldSpell), `got ${game.heldSpell}`);
 
     const held = game.heldSpell;
-    drop();
+    const refused = drop();
     assert.equal(game.heldSpell, held, "a second orb must not overwrite the slot");
-    assert.equal(game.pickups.length, 1, "it keeps falling instead");
+    // The orb itself, not a count: the same frame may have spawned others, and
+    // a total would tie this test to the seeded spawn order for nothing.
+    assert.ok(game.pickups.includes(refused), "it keeps falling instead");
   });
 
   it("resets the whole economy", () => {

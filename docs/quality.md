@@ -19,7 +19,7 @@ node --test --test-name-pattern="mêlée"         # un test par son nom
 
 ### Ce qui est couvert
 
-**312 tests, 100 % des lignes** de tous les modules de logique.
+**367 tests, 100 % des lignes** de tous les modules de logique.
 
 | Fichier | Ce qu'il vérifie |
 | --- | --- |
@@ -29,12 +29,20 @@ node --test --test-name-pattern="mêlée"         # un test par son nom
 | `combat.test.js` | Portée de la mêlée, ciblage du plus proche, invincibilité du boss |
 | `game.test.js` | Parties complètes : victoire, défaite, score, spawn, déterminisme |
 | `threat.test.js` | Les repères du bas : qui est suivi, les seuils, un repère par menace |
+| `campaign.test.js` | Le mode histoire : registre des niveaux, déblocage, sauvegarde, arrivée du boss |
 
 Ce qui n'est pas testé : `render/` — hors ses tables pures, `layout.js` et les
 couleurs de `palette.js` —, `engine/keyboard.js`, `engine/pointer.js`,
-`engine/loop.js` et `main.js`. Ce sont les couches qui touchent le DOM ; les
-tester demanderait jsdom pour peu de valeur. Elles sont volontairement minces —
-tout ce qui décide de quelque chose vit ailleurs.
+`engine/loop.js` et `main.js`.
+
+> `engine/storage.js` fait exception et **est** testé, avec un faux
+> `localStorage` posé sur `globalThis` : ses deux `try/catch` sont précisément
+> ce qui empêche une navigation privée stricte d'empêcher le jeu de démarrer, et
+> ça ne se vérifie pas à l'œil.
+
+Ce sont les couches qui touchent le DOM ; les tester demanderait jsdom pour peu
+de valeur. Elles sont volontairement minces — tout ce qui décide de quelque
+chose vit ailleurs.
 
 ### Ce qui rend les tests possibles
 

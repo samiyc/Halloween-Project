@@ -5,18 +5,22 @@ import { SIDEBAR } from "../config/settings.js";
 import { SPELLS, spellColorOf } from "../config/spells.js";
 import { END_REASON, GAME_STATUS } from "../game/game.js";
 import { drawVerticalGauge } from "./gauges.js";
-import { gameOverMenuButton, pauseButton } from "./layout.js";
+import { gameOverMenuButton, pauseButton, wrapLines } from "./layout.js";
 import { drawButton } from "./menu.js";
 import { FONTS, PALETTE } from "./palette.js";
 
 /** @type {Readonly<Record<string, string>>} */
 const LOSS_MESSAGES = Object.freeze({
-  [END_REASON.boss]: "Le boss a franchi la ligne.",
-  [END_REASON.enemy]: "Un ennemi a franchi la ligne.",
+  [END_REASON.boss]: "La machine-mère a franchi la ligne.",
+  [END_REASON.enemy]: "Un robot a franchi la ligne.",
   [END_REASON.health]: "La tourelle du boss vous a eu.",
 });
 
 const PAD = 20;
+/** Where the mission name sits in the right strip: under the glyph legend. */
+const MISSION_Y = 420;
+/** The debrief is written across the top of the victory overlay. */
+const DEBRIEF = Object.freeze({ top: 170, lineHeight: 34, maxChars: 82 });
 
 /**
  * Everything drawn in the two sidebars, plus the end-of-game overlay.
@@ -58,6 +62,7 @@ export class Hud {
 
     drawButton(this.ctx, pauseButton());
     this.drawGlyphLegend(rules);
+    if (game.level) this.drawMissionName(game.level.name);
     if (game.health) this.drawHealthGauge(game.health);
   }
 
@@ -102,7 +107,7 @@ export class Hud {
     ctx.textAlign = "left";
     ctx.fillStyle = PALETTE.textMuted;
     ctx.font = FONTS.label;
-    ctx.fillText("FANTÔMES", PAD, 190);
+    ctx.fillText("ROBOTS", PAD, 190);
 
     ctx.fillStyle = PALETTE.text;
     ctx.font = FONTS.headline;
@@ -180,6 +185,32 @@ export class Hud {
   }
 
   /**
+   * Which story episode is being played, in the right strip under the legend.
+   *
+   * There, rather than in the left one, because the left strip is full in every
+   * mode that has a spell slot — and a name that only fits on Easy would be a
+   * trap the day a story level is promoted to Normal.
+   *
+   * @param {string} name
+   */
+  drawMissionName(name) {
+    const { ctx } = this;
+    const x = this.rightX + PAD;
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = FONTS.label;
+    ctx.fillText("MISSION", x, MISSION_Y);
+
+    ctx.fillStyle = PALETTE.text;
+    let y = MISSION_Y + 34;
+    for (const line of wrapLines(name, 22)) {
+      ctx.fillText(line, x, y);
+      y += 26;
+    }
+  }
+
+  /**
    * The health bar, Hard only: the mana gauge mirrored into the right sidebar.
    * Nothing damages it yet — the boss attack patterns that would are still to
    * be designed.
@@ -217,14 +248,43 @@ export class Hud {
     ctx.textAlign = "center";
     ctx.fillStyle = won ? PALETTE.win : PALETTE.lose;
     ctx.font = FONTS.headline;
-    ctx.fillText(won ? "You Win!" : "Game Over", centerX, centerY - 40);
+    ctx.fillText(won ? "Mission accomplie" : "Mission perdue", centerX, centerY - 40);
 
     ctx.fillStyle = PALETTE.text;
     ctx.font = FONTS.subhead;
-    ctx.fillText(`Fantômes éliminés : ${game.enemiesDefeated}`, centerX, centerY + 16);
+    ctx.fillText(`Robots détruits : ${game.enemiesDefeated}`, centerX, centerY + 16);
 
+    if (won) this.drawDebrief(game.level, centerX);
     this.drawGameOverFooter(game, canRestart, centerX, centerY);
     drawButton(ctx, gameOverMenuButton());
+  }
+
+  /**
+   * What a won story episode says, across the top of the overlay.
+   *
+   * Up there rather than under the score: the bottom half already carries the
+   * cause of death, the restart prompt and the Menu button, and a paragraph
+   * squeezed between them would have to shorten every time one of them moves.
+   *
+   * @param {import("../config/levels.js").Level|null} level
+   * @param {number} centerX
+   */
+  drawDebrief(level, centerX) {
+    if (!level) return;
+    const { ctx } = this;
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = PALETTE.text;
+    ctx.font = FONTS.subhead;
+    ctx.fillText(level.name, centerX, DEBRIEF.top);
+
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = FONTS.hint;
+    let y = DEBRIEF.top + 56;
+    for (const line of wrapLines(level.debrief, DEBRIEF.maxChars)) {
+      ctx.fillText(line, centerX, y);
+      y += DEBRIEF.lineHeight;
+    }
   }
 
   /**

@@ -1,17 +1,36 @@
 import { COMMON_SYMBOLS } from "../config/glyphs.js";
-import { BOSS, toFrames } from "../config/settings.js";
+import { BOSS, clampDelta, toFrames } from "../config/settings.js";
 import { randomSequence, systemRandom } from "../tools/random.js";
 import { Entity } from "./entity.js";
 
 /** @type {const} */
 export const BOSS_PHASE = Object.freeze({
+  /** Parked above the board, waiting out `arrivalDelayMs`, then sliding in. */
+  waiting: "waiting",
   descending: "descending",
   retreating: "retreating",
 });
 
 /**
+ * How many symbols the boss carries at a given number of lives left.
+ *
+ * It **grows** as lives are spent: 10 at full lives, 13, then 16. Written once
+ * because the constructor and `retreat()` both need it, and written from the
+ * lives *spent* (`BOSS.lives - lives`) rather than the lives left — the first
+ * version multiplied by the lives remaining, so the boss got *shorter* every
+ * time it came back and the last phase was the quickest of the three.
+ *
+ * @param {number} lives
+ * @returns {number}
+ */
+export function sequenceLengthFor(lives) {
+  return BOSS.sequenceBase + (BOSS.lives - lives) * BOSS.sequencePerLife;
+}
+
+/**
  * The boss is a phase machine, not a bigger enemy.
  *
+ *   waiting    -- delay spent, slides in --> descending
  *   descending -- sequence cleared --> retreating (invincible, moves up)
  *   retreating -- reaches the top   --> descending (longer sequence, smaller, faster)
  *
@@ -26,30 +45,44 @@ export class Boss extends Entity {
    * @param {object} [options]
    * @param {number} [options.fieldWidth]
    * @param {import("../tools/random.js").Rng} [options.rng]
+   * @param {number} [options.arrivalDelayMs] Story levels hold it back so the
+   *   opening minute belongs to the ordinary enemies. 0 everywhere else, so the
+   *   three training modes are untouched.
    */
-  constructor({ fieldWidth = 0, rng = systemRandom } = {}) {
+  constructor({ fieldWidth = 0, rng = systemRandom, arrivalDelayMs = 0 } = {}) {
     const lives = BOSS.lives;
     super({
       // Kept between 30% and 70% of the field so it never hugs an edge.
       x: rng.range(0.3, 0.7) * fieldWidth,
-      y: 0,
+      // Parked out of sight while it waits; it slides down into the board when
+      // its delay runs out.
+      y: arrivalDelayMs > 0 ? -BOSS.size : 0,
       size: BOSS.size,
-      sequence: randomSequence(
-        rng,
-        BOSS.sequenceBase + lives * BOSS.sequencePerLife,
-        COMMON_SYMBOLS,
-      ),
+      sequence: randomSequence(rng, sequenceLengthFor(lives), COMMON_SYMBOLS),
     });
 
     this.rng = rng;
     this.lives = lives;
     this.speed = BOSS.speed;
-    this.phase = BOSS_PHASE.descending;
+    this.arrivalMs = arrivalDelayMs;
+    this.phase = arrivalDelayMs > 0 ? BOSS_PHASE.waiting : BOSS_PHASE.descending;
     this.color = BOSS.baseColor;
   }
 
+  /** Not on the board yet: nothing should aim at it, or point a marker at it. */
+  get isWaiting() {
+    return this.phase === BOSS_PHASE.waiting;
+  }
+
+  /**
+   * Untouchable, and — through `Game` — with its turret held.
+   *
+   * The arrival reuses this rather than adding a rule of its own: a boss that
+   * has not landed cannot be hit by a gesture, cannot be struck by the melee,
+   * cannot lose a life, and does not fire. All of it falls out of this getter.
+   */
   get isInvincible() {
-    return this.phase === BOSS_PHASE.retreating;
+    return this.phase === BOSS_PHASE.retreating || this.isWaiting;
   }
 
   /**
@@ -68,11 +101,34 @@ export class Boss extends Entity {
   update(deltaMs) {
     this.tickHitFlash(deltaMs);
     const frames = toFrames(deltaMs);
-    if (this.isInvincible) {
+    if (this.isWaiting) {
+      this.arrive(deltaMs, frames);
+    } else if (this.isInvincible) {
       this.retreat(frames);
     } else {
       this.y += this.speed * frames;
     }
+  }
+
+  /**
+   * Counts down the delay, then walks the boss into the board.
+   *
+   * The entrance borrows `retreatSpeed`, the speed the boss already uses to
+   * travel off the board: descending at its own 0.25 px/frame would take ten
+   * seconds to clear its own height, and popping into place would read as a
+   * glitch. It becomes vulnerable exactly when it lands.
+   *
+   * @param {number} deltaMs
+   * @param {number} frames
+   */
+  arrive(deltaMs, frames) {
+    this.arrivalMs -= clampDelta(deltaMs);
+    if (this.arrivalMs > 0) return;
+
+    this.y += BOSS.retreatSpeed * frames;
+    if (this.y < 0) return;
+    this.y = 0;
+    this.phase = BOSS_PHASE.descending;
   }
 
   /** @param {number} frames */
@@ -86,7 +142,7 @@ export class Boss extends Entity {
     this.size -= BOSS.shrinkPerLife;
     this.sequence = randomSequence(
       this.rng,
-      BOSS.sequenceBase + this.lives * BOSS.sequencePerLife,
+      sequenceLengthFor(this.lives),
       COMMON_SYMBOLS,
     );
   }

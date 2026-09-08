@@ -105,11 +105,11 @@ export const BOSS = Object.freeze({
   speed: 0.25,
   /** Upward speed during the invincible retreat; ignores `speed`. */
   retreatSpeed: 1.5,
-  shrinkPerLife: 24,
-  speedGainPerLife: 0.25,
+  shrinkPerLife: 10,
+  speedGainPerLife: 0.10,
   /** Sequence length = sequenceBase + lives * sequencePerLife. */
-  sequenceBase: 6,
-  sequencePerLife: 2,
+  sequenceBase: 10,
+  sequencePerLife: 3,
 });
 
 export const PLAYER = Object.freeze({

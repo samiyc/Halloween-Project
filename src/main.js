@@ -4,6 +4,8 @@ import { recognizeStroke } from "./engine/gesture/recognizer.js";
 import { Keyboard } from "./engine/keyboard.js";
 import { GameLoop } from "./engine/loop.js";
 import { PointerTracker } from "./engine/pointer.js";
+import { browserStorage } from "./engine/storage.js";
+import { Progress } from "./game/progress.js";
 import { Session } from "./game/session.js";
 import { threatMarkers } from "./game/threat.js";
 import { Hud } from "./render/hud.js";
@@ -39,7 +41,12 @@ class App {
     this.canvas = canvas;
     // The board, not the canvas: the sidebars are chrome, and passing the full
     // canvas here would let enemies spawn and fall underneath them.
-    this.session = new Session({ bounds: { width: FIELD.width, height: FIELD.height } });
+    this.session = new Session({
+      bounds: { width: FIELD.width, height: FIELD.height },
+      // The one place the campaign meets the browser. Everything above this
+      // line works against `{read, write}` and can run under Node.
+      progress: new Progress({ storage: browserStorage() }),
+    });
     this.renderer = new Renderer(ctx);
     this.hud = new Hud(ctx);
     this.keyboard = new Keyboard().attach(globalThis);
@@ -82,9 +89,23 @@ class App {
       if (presses.includes("KeyE")) this.game.castSpell();
       // Pausing is simply not calling this: the run freezes where it stands.
       if (this.game.isRunning) this.game.update(deltaMs, this.keyboard.moveDirection());
-      else this.gameOverElapsedMs += deltaMs;
+      else this.endOfRun(deltaMs);
     }
     this.render();
+  }
+
+  /**
+   * The run is over: age the game-over screen, and bank a won episode.
+   *
+   * `noteOutcome()` is called every frame rather than once, on purpose — there
+   * is no "the run just ended" event to hook, and recording a completion twice
+   * costs nothing.
+   *
+   * @param {number} deltaMs
+   */
+  endOfRun(deltaMs) {
+    this.gameOverElapsedMs += deltaMs;
+    this.session.noteOutcome();
   }
 
   // ----------------------------------------------------------------- input --
@@ -117,7 +138,12 @@ class App {
   pressInMenu(point) {
     const button = buttonAt(menuButtons(this.session), point);
     if (!button) return;
-    if (button.id === "resume") this.session.resume();
+
+    // The info square is the odd one out: it launches nothing, it unfolds the
+    // episode's story under the menu.
+    if (button.kind === "info") this.session.toggleInfo(button.levelId);
+    else if (button.kind === "level") this.session.startLevel(button.levelId);
+    else if (button.kind === "resume") this.session.resume();
     else this.session.start(button.id);
   }
 
@@ -141,7 +167,8 @@ class App {
   }
 
   restart() {
-    this.session.start(this.session.difficulty);
+    // Whatever was last launched — the story episode, or the training mode.
+    this.session.restart();
     this.gameOverElapsedMs = 0;
   }
 
@@ -168,8 +195,12 @@ class App {
   /** Drawn in field coordinates — see `Renderer.inField()`. */
   drawBoard() {
     const { game, renderer } = this;
-    renderer.drawBoss(game.boss);
-    if (game.turret) drawTurret(renderer.ctx, game.turretMount, game.turret);
+    // Nothing at all while the boss is still parked above the board: its
+    // sequence label is clamped into view by `drawEntity`, and its "3 vies"
+    // line is written under its feet, so an off-screen boss would otherwise
+    // leak two lines of text across the top of the field. The test is its
+    // position rather than its phase, so the slide-in stays visible.
+    if (game.boss.y + game.boss.size > 0) this.drawBoss();
     for (const enemy of game.enemies) {
       renderer.drawEntity(enemy);
     }
@@ -190,6 +221,13 @@ class App {
     // Last, so nothing can cover them. Drawn first, the boss hid its own marker
     // completely at the moment it mattered: its 160px body sits on the bottom line.
     drawThreatMarkers(renderer.ctx, threatMarkers(game.threats, game.bounds.height));
+  }
+
+  /** The boss and, on Hard, the turret bolted to it. */
+  drawBoss() {
+    const { game, renderer } = this;
+    renderer.drawBoss(game.boss);
+    if (game.turret) drawTurret(renderer.ctx, game.turretMount, game.turret);
   }
 
   /**

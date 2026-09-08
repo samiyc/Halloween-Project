@@ -75,14 +75,17 @@ const HEAVY_SHOT = Object.freeze({
   damage: 50,
   color: "#D2321E",
   /** A bright rim, because size alone reads as "close", not as "lethal". */
-  ring: "#FFE066",
+  ring: "#FFD86E",
 });
 
-/** Three shots at 0, 250 and 500 ms — the burst lasts half a second. */
+/**
+ * Five shots 200 ms apart — the burst lasts 0.8 s and costs half the bar if
+ * every one of them lands. It is the attack the other three are read against.
+ */
 export const VOLLEY = Object.freeze({
   id: "volley",
-  shots: 3,
-  shotIntervalMs: 250,
+  shots: 5,
+  shotIntervalMs: 200,
   shot: PROJECTILE,
 });
 
@@ -98,45 +101,57 @@ export const LASER = Object.freeze({
   chargeMs: 500,
   durationMs: 2000,
   /**
-   * The beam sweeps at a sixth of the tracking speed.
+   * The beam sweeps at a ninth of the tracking speed.
    *
    * At the full 90°/s the beam simply stayed on the player: it does not have to
    * predict anything, it only has to keep pointing. Slowing the barrel is what
    * turns a beam into a thing you run out of, and it is why the beam can afford
-   * to hurt twice as much as it used to.
+   * to hurt three times what a projectile does.
    */
-  rotationDegPerSecond: 15,
-  /** 10/s: two full seconds in the beam costs 20, two projectiles. */
-  dps: 10,
+  rotationDegPerSecond: 10,
+  /** 15/s: two full seconds in the beam costs 30, three projectiles. */
+  dps: 15,
   /**
-   * The width of the mana gauge (`GAUGE.thickness`), written out because
-   * `config/` must not import from `render/`. A test pins the two together.
+   * Wider than the mana gauge it was once pinned to (`GAUGE.thickness`, 18).
+   *
+   * The two were equal because the original sketch asked for it; the beam has
+   * since become a threat setting of its own and was widened to read as one. A
+   * test only keeps it from falling *below* the gauge, which is the width that
+   * was proven legible on the board.
    */
-  beamWidth: 18,
+  beamWidth: 22,
   color: "#FF4D6D",
 });
 
 /**
  * The spiral: the barrel stops tracking and sweeps, firing continuously.
  *
- * 405° rather than 360° so the arm does not close on its own start — the last
+ * 380° rather than 360° so the arm does not close on its own start — the last
  * shots fall between the first ones instead of on top of them, which is what
  * leaves a walkable gap rather than a solid ring.
+ *
+ * 253°/s and a shot every 35 ms: about 43 projectiles thrown across the board
+ * in a second and a half. It is the densest thing the boss does, and the reason
+ * it belongs to the last phase.
  */
 export const SPIRAL = Object.freeze({
   id: "spiral",
-  durationMs: 2500,
-  shotIntervalMs: 100,
-  sweepDegrees: 405,
+  durationMs: 1500,
+  shotIntervalMs: 35,
+  sweepDegrees: 380,
   shot: SPIRAL_SHOT,
 });
 
+/**
+ * Three drifting discs, 800 ms apart: a barrage of ground you may not stand on,
+ * rather than the single disc it started as.
+ */
 export const HEAVY = Object.freeze({
   id: "heavy",
-  shots: 1,
-  shotIntervalMs: 250,
+  shots: 3,
+  shotIntervalMs: 800,
   shot: HEAVY_SHOT,
-  /** Short, as asked — but it is only one roll in five, so roughly every 12 s. */
+  /** Its own, shorter than the shared 2500 — and in phase 2 it is one roll in two. */
   cooldownMs: 1500,
 });
 
@@ -154,25 +169,23 @@ export const PATTERNS = Object.freeze({
  * Phase 1 is the boss at full lives, 2 after the first, 3 after the second.
  * Weights are relative, so a rare slot is one entry against the volley's share.
  *
- * The volley is in every phase and never changes: it is the baseline the other
- * patterns are read against. The laser is a phase-1 signature that the spiral
- * takes over from in phase 2, and it returns in phase 3 alongside everything
- * else — the last phase is the only one where all four can come.
+ * The volley is the baseline, and the escalation is that the boss **stops
+ * using it**: two rolls in three in phase 1, one in two in phase 2, and gone in
+ * phase 3, which is nothing but the two rare attacks. An earlier version kept
+ * it in all three phases as a constant to read the others against; playing it
+ * showed the opposite is what makes the last life feel like one.
  */
 export const PHASE_PATTERNS = Object.freeze({
   1: Object.freeze([
-    Object.freeze({ id: "volley", weight: 4 }),
+    Object.freeze({ id: "volley", weight: 2 }),
     Object.freeze({ id: "laser", weight: 1 }),
   ]),
   2: Object.freeze([
-    Object.freeze({ id: "volley", weight: 3 }),
-    Object.freeze({ id: "spiral", weight: 1 }),
+    Object.freeze({ id: "volley", weight: 1 }),
     Object.freeze({ id: "heavy", weight: 1 }),
   ]),
   3: Object.freeze([
-    Object.freeze({ id: "volley", weight: 2 }),
     Object.freeze({ id: "spiral", weight: 1 }),
-    Object.freeze({ id: "heavy", weight: 1 }),
     Object.freeze({ id: "laser", weight: 1 }),
   ]),
 });

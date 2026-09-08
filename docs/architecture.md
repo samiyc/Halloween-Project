@@ -31,17 +31,22 @@ entière se déroule dans un test unitaire.
 
 | Dossier | Rôle | Connaît le DOM ? |
 | --- | --- | --- |
-| `config/` | Glyphes et réglages. Aucune logique. | non |
+| `config/` | Glyphes, réglages, niveaux. Aucune logique. | non |
 | `tools/` | Générateur aléatoire injectable. | non |
 | `entities/` | `Entity`, `Enemy`, `Boss`, `Player` : état + comportement. | non |
-| `game/` | `Game` (orchestration), `combat`, `spawner`, `threat`. | non |
+| `game/` | `Game` (orchestration), `combat`, `spawner`, `threat`, `progress`. | non |
 | `engine/gesture/` | Géométrie pure et reconnaissance. | non |
-| `engine/` (racine) | `GameLoop`, `Keyboard`, `PointerTracker`. | oui — événements |
+| `engine/` (racine) | `GameLoop`, `Keyboard`, `PointerTracker`, `storage`. | oui — événements et `localStorage` |
 | `render/` | `Renderer`, `Hud`, `palette`, `turret`, `threat`. | oui — contexte 2D |
 | `main.js` | Câblage. | oui |
 
 Les dépendances ne vont que vers le bas. `entities/` n'importe jamais
 `render/`; `game/` n'importe jamais `engine/keyboard.js`.
+
+`engine/storage.js` est la seule exception apparente : il vit dans `engine/`
+parce qu'il touche le navigateur, mais il n'est qu'un `{read, write}`. C'est
+`main.js` qui l'injecte dans `Progress`, exactement comme il n'injecte jamais un
+`ctx` dans une entité — voir [story-mode.md](story-mode.md).
 
 ## Le flux d'une frame
 

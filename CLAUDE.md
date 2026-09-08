@@ -45,15 +45,17 @@ inside a unit test. Do not reintroduce `ctx` into an entity.
 ```
 halloween.html → src/main.js   (the only module aware of both DOM and game)
 src/
-  config/    glyphs.js, settings.js, difficulty.js — single source of truth
+  config/    glyphs.js, settings.js, difficulty.js, levels.js — single source
+             of truth
   tools/     random.js — the only Math.random() in the repo; color.js,
              aim.js, hit-flash.js
   entities/  Entity → Enemy, Boss, Player   (state + behaviour, no drawing)
              plus Turret and Projectile, which extend nothing
   game/      session.js (menu/pause), game.js (orchestrator), combat.js,
              spawner.js, gauge.js, collection.js, pickup-spawner.js,
-             effects.js, spellbook.js, boss-attacks.js, threat.js
-  engine/    loop.js, keyboard.js, pointer.js, gesture/{geometry,recognizer}.js
+             effects.js, spellbook.js, boss-attacks.js, threat.js, progress.js
+  engine/    loop.js, keyboard.js, pointer.js, storage.js,
+             gesture/{geometry,recognizer}.js
   render/    renderer.js, hud.js, menu.js, gauges.js, palette.js, turret.js,
              threat.js — 2D-context code, plus layout.js which is pure geometry
              and has no ctx
@@ -122,8 +124,13 @@ SonarJS's `pseudo-random` rule quiet outside that one justified exception.
 
 A phase machine: `descending` → (sequence cleared) → `retreating` (invincible,
 moves up, ignores `speed`) → reaching the top spends a life, regrows a longer
-sequence, shrinks 15px, speeds up 0.25. `isDefeatedForGood()` is only true out
+sequence, shrinks 10px, speeds up 0.10. `isDefeatedForGood()` is only true out
 of the retreat phase with no lives left.
+
+**`sequenceLengthFor(lives)` counts the lives *spent*** — 10, 13, 16 across the
+three phases. It was written from the lives *left*, so the boss came back with a
+shorter sequence each time and the last phase was the quickest of the three.
+Both call sites (the constructor and `retreat()`) go through that one function.
 
 Enemies reverse upward once `boss.lives < 1`, computed in `Game.advanceBoard()`
 and passed down as `update(deltaMs, { reversed })`. Enemies no longer reach into
@@ -199,6 +206,40 @@ did not shrink it: it is **44% larger** than the previous 1200x900. Win rate hel
 anyway, because a taller board slows the threat and the mana collection equally.
 Tune with `MANA.costCommon` first, then `ENEMY.baseSpeed` / `SPAWN.chancePerFrame`.
 
+## The story mode
+
+`docs/story-mode.md` holds the design, `docs/lore.md` the setting, and
+`docs/content-proposals.md` what could come next. The short version:
+
+- **The game is called Spell Blaster 3000** — magic against machines, no more
+  ghosts. `halloween.html` keeps its name on purpose: it is the URL the owner
+  opens with Live Server. The HUD says ROBOTS, not FANTÔMES.
+- **A level is data**, in `src/config/levels.js`: id, name, environment,
+  difficulty, `bossDelayMs`, `brief`, `debrief`. `LEVEL_IDS` is the unlock
+  order. **The five that exist are placeholders running `easy` rules** — what
+  they exist to prove is the unlocking, the saving and the text display.
+- **`Progress` (`game/progress.js`) is pure**, with `{read, write}` injected the
+  way `Rng` is. `engine/storage.js` is the only module that touches
+  `localStorage`, both accesses wrapped in `try/catch` — a private window throws
+  on the first `getItem`, and a game that cannot remember is fine while a game
+  that will not start is not. A save is `{version, completed}`; anything absent,
+  unparseable or of another version starts a fresh campaign rather than throwing.
+- **The boss arrives late** via `Boss.arrivalDelayMs`: it waits above the board
+  in phase `waiting`, then slides in at `retreatSpeed`. `isInvincible` covers
+  that phase, which is what already stops gestures, the melee, life loss and the
+  turret — no new rule anywhere. `Game.threats` drops a waiting boss so no
+  marker points off-screen. Training modes pass 0 and are untouched.
+- **`Session` owns the campaign navigation**: `startLevel()` re-checks the lock
+  (the greyed button is a courtesy, not the rule), `noteOutcome()` banks a win
+  every frame and is idempotent, `restart()` replays the episode or the mode,
+  `infoLevelId` is which story is unfolded in the menu.
+- **The menu is two columns** — training left, story centre — plus a small info
+  square per open episode that unfolds its text under the menu. All of it comes
+  out of `layout.js`, which still touches no ctx; `wrapLines()` wraps by
+  character count rather than `ctx.measureText()` so the panel stays testable.
+- Buttons carry a **`kind`** ("difficulty", "resume", "level", "info") and the
+  click handler branches on it. Do not parse ids back apart.
+
 ## Difficulty, menu and pause
 
 `docs/difficulty.md` holds the detail. The short version:
@@ -234,17 +275,21 @@ crossed".
 - **The rotation cap is the mechanic, and it is per pattern.** Uncapped tracking
   is a laser sight that nothing outruns. `TURRET.rotationDegPerSecond` (90) is
   the tracking default; a pattern may override it, and the beam does — at 90 it
-  simply stayed on the player, because a beam never has to lead a target. At 15
-  it can be walked out of, which is what earned it double damage.
+  simply stayed on the player, because a beam never has to lead a target. At 10
+  it can be walked out of, which is what lets it hurt 15/s, three projectiles
+  for a full pass.
 - **Phases come from lives**: `Boss.phaseNumber` is 1 at full lives, then 2, then
   3; `patternsForPhase()` owns the tables and clamps, because the boss spends a
-  frame at zero lives before the run is won. The three-shot volley is in every
-  phase and is deliberately the one thing that never changes.
+  frame at zero lives before the run is won. **The escalation is the volley being
+  taken away** — two rolls in three, then one in two, then none: phase 3 is
+  nothing but the spiral and the beam. An earlier version kept it in all three
+  phases as the constant to read the others against; playing it showed the
+  opposite is what makes a last life feel like one.
 - **There is no spread parameter, and there must not be one.** The barrel keeps
   tracking through a burst, so a moving player makes the shots fan out on their
   own. The fan is information: it says the player moved.
 - **The spiral sweeps blind** — it ignores the target entirely, at a rate derived
-  from `sweepDegrees / durationMs` rather than written twice. 405° rather than
+  from `sweepDegrees / durationMs` rather than written twice. 380° rather than
   360° so the arm does not close on its own start, leaving a walkable gap.
 - **The turret holds fire while the boss is invincible** (`canFire`), which also
   **freezes the barrel and greys the dome**, and re-arms a full cooldown on the
@@ -286,7 +331,10 @@ Implemented. `docs/mana-and-spells.md` holds the reasoning and the measurements.
 
 - Gestures cost mana: **8** points for `_ | V Ʌ`, **24** for the rare `↯ @`.
   Blue orbs are worth 5 and fall at 1.5x the enemy rate and speed. Gauge maxes at
-  **150**, starts at **20**, trickles 2 points/s.
+  **150**, **starts empty**, trickles 2 points/s — the first gesture is earned,
+  and the trickle alone pays for one after four seconds, so it is never a
+  deadlock. The Grande potion grants **30**, not the 50 it launched with: at 50 a
+  single yellow orb replaced a minute of collecting.
 - **A recognised gesture that hits nothing still costs.** That is what makes
   precision matter. An unrecognised stroke (`recognizeStroke` → `null`) casts
   nothing and costs nothing. Insufficient mana takes nothing and sets

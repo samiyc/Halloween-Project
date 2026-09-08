@@ -140,9 +140,15 @@ Ce n'est pas un gros ennemi, c'est une machine à états :
                    corps plus petit, descente plus rapide
 ```
 
-À chaque vie perdue : la séquence passe à `6 + vies × 2` symboles, la taille
-perd 15 px et la vitesse gagne 0,25. Le combat devient donc **plus petit, plus
-rapide et plus long** à mesure qu'il avance.
+À chaque vie perdue : la séquence passe à `10 + vies dépensées × 3` symboles —
+donc **10, puis 13, puis 16** —, la taille perd 10 px et la vitesse gagne 0,10.
+Le combat devient **plus petit, plus rapide et plus long** à mesure qu'il
+avance.
+
+> La formule comptait autrefois les vies **restantes**, si bien que le boss
+> revenait avec une séquence *plus courte* à chaque fois et que la dernière
+> phase était la plus expéditive des trois. `sequenceLengthFor()` compte
+> désormais les vies dépensées, et n'est écrite qu'une fois.
 
 Pendant la retraite le boss est **invincible** : ni les gestes ni la mêlée ne
 l'atteignent, et il ignore sa vitesse pour remonter à 1,5 px/frame. Il n'est
@@ -228,10 +234,10 @@ aussi plus de temps.
 | Réglage | Valeur |
 | --- | --- |
 | `lives` | 3 |
-| `size` | 160, −24 par vie |
-| `speed` | 0,25, +0,25 par vie |
+| `size` | 160, −10 par vie |
+| `speed` | 0,25, +0,10 par vie |
 | `retreatSpeed` | 1,5 (ignore `speed`) |
-| Séquence | `6 + vies × 2` symboles |
+| Séquence | `10 + vies dépensées × 3` → 10, 13, 16 |
 
 ### Joueur
 
@@ -247,7 +253,7 @@ aussi plus de temps.
 
 | Réglage | Valeur |
 | --- | --- |
-| `MANA.max` / `start` | 150 / 20 |
+| `MANA.max` / `start` | 150 / **0** — la jauge démarre vide, le premier geste se gagne |
 | `MANA.regenPerSecond` | 2 |
 | `MANA.orbValue` | 5 |
 | `MANA.costCommon` / `costRare` | 8 / 24 — **le levier de difficulté principal** |
@@ -279,9 +285,10 @@ Le tableau complet est dans [boss-patterns.md](boss-patterns.md) ; l'essentiel :
 | `TURRET.rotationDegPerSecond` | 90 — le suivi de base, **le levier principal** |
 | `TURRET.cooldownMs` | 2500, sauf si le pattern déclare le sien |
 | `PROJECTILE.speed` / `damage` / `radius` | 6 / 10 / 10 |
-| `VOLLEY.shots` / `shotIntervalMs` | 3 / 250 |
-| `LASER.rotationDegPerSecond` / `durationMs` / `dps` | 15 / 2000 / 10 |
-| `SPIRAL.sweepDegrees` / `durationMs` / `shotIntervalMs` | 405 / 2500 / 100 |
+| `VOLLEY.shots` / `shotIntervalMs` | 5 / 200 |
+| `LASER.rotationDegPerSecond` / `durationMs` / `dps` | 10 / 2000 / 15 |
+| `SPIRAL.sweepDegrees` / `durationMs` / `shotIntervalMs` | 380 / 1500 / 35 |
+| `HEAVY.shots` / `shotIntervalMs` | 3 / 800 |
 | `HEAVY.shot.radius` / `damage` / `cooldownMs` | 50 / 50 / 1500 |
 | Poids des patterns | par phase, voir `PHASE_PATTERNS` |
 

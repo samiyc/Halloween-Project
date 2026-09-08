@@ -19,12 +19,30 @@ import {
   buttonLines,
   gameOverMenuButton,
   hits,
+  infoButtons,
   menuButtons,
+  menuColumns,
   pauseButton,
+  storyButtons,
+  storyPanel,
+  trainingButtons,
+  wrapLines,
 } from "../src/render/layout.js";
 import { FONTS } from "../src/render/palette.js";
+import { LEVELS, LEVEL_IDS } from "../src/config/levels.js";
 import { Game } from "../src/game/game.js";
+import { Progress } from "../src/game/progress.js";
 import { createSeededRandom } from "../src/tools/random.js";
+
+/** A campaign nobody has played yet: only the first episode is open. */
+const fresh = () => new Progress();
+
+/** A campaign with the first `count` episodes won. */
+function played(count) {
+  const progress = new Progress();
+  for (const id of LEVEL_IDS.slice(0, count)) progress.complete(id);
+  return progress;
+}
 
 /**
  * A stand-in for the canvas element, enough for `toCanvasPoint`.
@@ -209,21 +227,20 @@ describe("pickups reach the board edges", () => {
 describe("button geometry", () => {
   const centre = (rect) => ({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
 
-  it("offers one button per difficulty, plus resume", () => {
-    const buttons = menuButtons({ canResume: false });
+  it("offers one training button per difficulty, plus resume", () => {
     assert.deepEqual(
-      buttons.map((button) => button.id),
+      trainingButtons({ canResume: false }).map((button) => button.id),
       [...DIFFICULTY_IDS, "resume"],
     );
   });
 
   it("greys out resume until there is something to resume", () => {
-    assert.equal(menuButtons({ canResume: false }).at(-1).enabled, false);
-    assert.equal(menuButtons({ canResume: true }).at(-1).enabled, true);
+    assert.equal(trainingButtons({ canResume: false }).at(-1).enabled, false);
+    assert.equal(trainingButtons({ canResume: true }).at(-1).enabled, true);
   });
 
   it("keeps every menu button on the canvas and clear of the sidebars", () => {
-    for (const button of menuButtons({ canResume: true })) {
+    for (const button of menuButtons({ canResume: true, progress: fresh() })) {
       assert.ok(button.rect.x > SIDEBAR.width, `"${button.id}" overlaps the left strip`);
       assert.ok(
         button.rect.x + button.rect.width < CANVAS.width - SIDEBAR.width,
@@ -234,24 +251,105 @@ describe("button geometry", () => {
     }
   });
 
-  it("stacks the menu buttons without overlapping", () => {
-    const buttons = menuButtons({ canResume: true });
-    for (let index = 1; index < buttons.length; index += 1) {
-      const above = buttons[index - 1].rect;
-      assert.ok(
-        buttons[index].rect.y > above.y + above.height,
-        "two buttons would share a click",
-      );
+  it("stacks each column without overlapping", () => {
+    for (const column of [trainingButtons({ canResume: true }), storyButtons(fresh())]) {
+      for (let index = 1; index < column.length; index += 1) {
+        const above = column[index - 1].rect;
+        assert.ok(
+          column[index].rect.y > above.y + above.height,
+          "two buttons would share a click",
+        );
+      }
     }
   });
 
   it("finds the button under a point, and only an enabled one", () => {
-    const disabled = menuButtons({ canResume: false });
-    const resume = disabled.at(-1);
+    const disabled = menuButtons({ canResume: false, progress: fresh() });
+    const resume = trainingButtons({ canResume: false }).at(-1);
 
     assert.equal(buttonAt(disabled, centre(resume.rect)), null, "greyed is not clickable");
-    assert.equal(buttonAt(menuButtons({ canResume: true }), centre(resume.rect)).id, "resume");
+    const enabled = menuButtons({ canResume: true, progress: fresh() });
+    assert.equal(buttonAt(enabled, centre(resume.rect)).id, "resume");
     assert.equal(buttonAt(disabled, { x: 0, y: 0 }), null);
+  });
+
+  it("puts training on the left and the campaign in the middle", () => {
+    const training = trainingButtons({ canResume: false })[0].rect;
+    const story = storyButtons(fresh())[0].rect;
+
+    assert.ok(training.x + training.width < story.x, "the columns must not overlap");
+    assert.equal(training.y, story.y, "both columns start at the same height");
+  });
+
+  it("centres the whole block, info squares included", () => {
+    const columns = menuColumns();
+    const left = columns.training;
+    const right = infoButtons(fresh())[0].rect;
+    const rightEdge = right.x + right.width;
+
+    assert.ok(
+      Math.abs(left - (CANVAS.width - rightEdge)) < 1,
+      "the block leans to one side",
+    );
+  });
+
+  it("opens only the first episode on a fresh campaign", () => {
+    const buttons = storyButtons(fresh());
+
+    assert.equal(buttons.length, LEVELS.length);
+    assert.deepEqual(
+      buttons.map((button) => button.enabled),
+      [true, ...LEVELS.slice(1).map(() => false)],
+    );
+  });
+
+  it("opens the next episode once the one before it is won", () => {
+    const buttons = storyButtons(played(2));
+    assert.deepEqual(
+      buttons.slice(0, 4).map((button) => button.enabled),
+      [true, true, true, false],
+    );
+  });
+
+  it("hides the name of a locked episode", () => {
+    const [open, locked] = storyButtons(fresh());
+    assert.equal(open.label, LEVELS[0].name);
+    assert.ok(!locked.label.includes(LEVELS[1].name), "a locked episode must not spoil its name");
+  });
+
+  it("gives an info square to open episodes only", () => {
+    assert.equal(infoButtons(fresh()).length, 1);
+    assert.equal(infoButtons(played(3)).length, 4);
+    assert.deepEqual(
+      infoButtons(fresh()).map((button) => button.kind),
+      ["info"],
+    );
+  });
+
+  it("puts each info square beside its own episode, never over it", () => {
+    const levels = storyButtons(played(5));
+    for (const info of infoButtons(played(5))) {
+      const level = levels.find((button) => button.levelId === info.levelId);
+      assert.ok(info.rect.x >= level.rect.x + level.rect.width, "the square covers the button");
+      assert.ok(info.rect.y >= level.rect.y, "and it must stay on its row");
+      assert.ok(info.rect.y + info.rect.height <= level.rect.y + level.rect.height);
+    }
+  });
+
+  it("puts the story panel under both columns, inside the canvas", () => {
+    const panel = storyPanel();
+    const lastStory = storyButtons(fresh()).at(-1).rect;
+
+    assert.ok(panel.y > lastStory.y + lastStory.height, "the panel would cover the buttons");
+    assert.ok(panel.y + panel.height <= CANVAS.height);
+    assert.ok(panel.width > 0 && panel.height > 0);
+  });
+
+  it("tells the click handler what a button is without parsing its id", () => {
+    const kinds = new Set(
+      menuButtons({ canResume: true, progress: fresh() }).map((button) => button.kind),
+    );
+    assert.deepEqual([...kinds].sort(), ["difficulty", "info", "level", "resume"]);
   });
 
   it("puts the pause button at the top of the right sidebar", () => {
@@ -284,7 +382,7 @@ describe("button geometry", () => {
 
 describe("button text fits its box", () => {
   const everyButton = () => [
-    ...menuButtons({ canResume: true }),
+    ...menuButtons({ canResume: true, progress: fresh() }),
     pauseButton(),
     gameOverMenuButton(),
   ];
@@ -328,5 +426,40 @@ describe("button text fits its box", () => {
     // geometry, so the two are pinned here instead.
     assert.equal(LINE_HEIGHT.label, Number.parseInt(FONTS.hud, 10));
     assert.equal(LINE_HEIGHT.hint, Number.parseInt(FONTS.label, 10));
+  });
+});
+
+describe("wrapLines", () => {
+  it("breaks a paragraph at the last word that fits", () => {
+    const lines = wrapLines("un deux trois quatre cinq", 12);
+    assert.deepEqual(lines, ["un deux", "trois quatre", "cinq"]);
+    for (const line of lines) {
+      assert.ok(line.length <= 12, `"${line}" is too long`);
+    }
+  });
+
+  it("never drops a word, whatever the width", () => {
+    const text = LEVELS[0].brief;
+    for (const width of [24, 60, 96]) {
+      assert.equal(
+        wrapLines(text, width).join(" "),
+        text.split(/\s+/).join(" "),
+        `words lost at width ${width}`,
+      );
+    }
+  });
+
+  it("keeps a word longer than the line rather than cutting it", () => {
+    // Breaking mid-word would be worse than overflowing: French has long ones,
+    // and an unreadable half-word is not a saving.
+    assert.deepEqual(wrapLines("anticonstitutionnellement ok", 10), [
+      "anticonstitutionnellement",
+      "ok",
+    ]);
+  });
+
+  it("returns nothing for nothing", () => {
+    assert.deepEqual(wrapLines("", 40), []);
+    assert.deepEqual(wrapLines("   ", 40), []);
   });
 });

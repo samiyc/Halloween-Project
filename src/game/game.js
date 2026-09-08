@@ -43,16 +43,21 @@ export class Game {
    * @param {{width: number, height: number}} [options.bounds]
    * @param {import("../tools/random.js").Rng} [options.rng]
    * @param {import("../config/difficulty.js").DifficultyId} [options.difficulty]
+   * @param {import("../config/levels.js").Level|null} [options.level] A story
+   *   episode: it names the run and says when the boss comes down. Its own
+   *   `difficulty` wins, so a level and a mode can never disagree.
    */
   constructor({
     bounds = { width: FIELD.width, height: FIELD.height },
     rng = systemRandom,
     difficulty = DEFAULT_DIFFICULTY,
+    level = null,
   } = {}) {
     this.bounds = bounds;
     this.rng = rng;
+    this.level = level;
     /** Which mechanics exist at all in this run. See config/difficulty.js. */
-    this.rules = rulesOf(difficulty);
+    this.rules = rulesOf(level?.difficulty ?? difficulty);
     this.reset();
   }
 
@@ -61,7 +66,11 @@ export class Game {
     this.enemies = [];
     /** @type {import("../entities/pickup.js").Pickup[]} */
     this.pickups = [];
-    this.boss = new Boss({ fieldWidth: this.bounds.width, rng: this.rng });
+    this.boss = new Boss({
+      fieldWidth: this.bounds.width,
+      rng: this.rng,
+      arrivalDelayMs: this.level?.bossDelayMs ?? 0,
+    });
     // Centred, not parked at the bottom. Starting low meant walking up through
     // an empty board every run before anything was in reach.
     this.player = new Player({
@@ -121,9 +130,12 @@ export class Game {
    * The set the bottom-line marker points into. It is the boss as well as the
    * enemies: losing to the boss is the easiest loss to miss, since it descends
    * at a quarter of a pixel a frame while attention is on the squares.
+   *
+   * A boss still waiting to arrive is left out: it sits above the board, so a
+   * marker for it would point at nothing the player can see or act on.
    */
   get threats() {
-    return [...this.enemies, this.boss];
+    return this.boss.isWaiting ? [...this.enemies] : [...this.enemies, this.boss];
   }
 
   /**

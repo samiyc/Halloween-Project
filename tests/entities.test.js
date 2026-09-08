@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { COMMON_SYMBOLS, RARE_SYMBOLS, symbolFor } from "../src/config/glyphs.js";
 import { BOSS, PLAYER, TIME } from "../src/config/settings.js";
-import { BOSS_PHASE, Boss } from "../src/entities/boss.js";
+import { BOSS_PHASE, Boss, sequenceLengthFor } from "../src/entities/boss.js";
 import { Enemy } from "../src/entities/enemy.js";
 import { Entity } from "../src/entities/entity.js";
 import { Player } from "../src/entities/player.js";
@@ -132,11 +132,20 @@ describe("Boss phase machine", () => {
   /** @returns {Boss} */
   const freshBoss = () => new Boss({ fieldWidth: 1200, rng: createSeededRandom(11) });
 
-  it("starts descending with a sequence sized from its lives", () => {
+  it("starts descending with the shortest sequence of the fight", () => {
     const boss = freshBoss();
     assert.equal(boss.lives, BOSS.lives);
     assert.equal(boss.phase, BOSS_PHASE.descending);
-    assert.equal(boss.sequence.length, BOSS.sequenceBase + BOSS.lives * BOSS.sequencePerLife);
+    assert.equal(boss.sequence.length, sequenceLengthFor(BOSS.lives));
+    assert.equal(boss.sequence.length, BOSS.sequenceBase, "no life spent, no bonus symbol");
+  });
+
+  it("grows its sequence with every life spent, never shrinks it", () => {
+    // The first version multiplied by the lives *left*, so the boss came back
+    // shorter each time and the last phase was the quickest of the three.
+    const lengths = [3, 2, 1].map(sequenceLengthFor);
+    assert.deepEqual(lengths, [10, 13, 16]);
+    assert.ok(lengths[0] < lengths[1] && lengths[1] < lengths[2]);
   });
 
   it("spends a life and retreats when its sequence is cleared", () => {
@@ -160,6 +169,7 @@ describe("Boss phase machine", () => {
     const boss = freshBoss();
     const size = boss.size;
     const speed = boss.speed;
+    const sequence = boss.sequence.length;
 
     boss.y = 300;
     boss.sequence = "";
@@ -169,10 +179,8 @@ describe("Boss phase machine", () => {
     assert.equal(boss.phase, BOSS_PHASE.descending);
     assert.equal(boss.size, size - BOSS.shrinkPerLife);
     assert.equal(boss.speed, speed + BOSS.speedGainPerLife);
-    assert.equal(
-      boss.sequence.length,
-      BOSS.sequenceBase + boss.lives * BOSS.sequencePerLife,
-    );
+    assert.equal(boss.sequence.length, sequenceLengthFor(boss.lives));
+    assert.ok(boss.sequence.length > sequence, "a life spent must cost symbols, not save them");
     assert.equal(boss.color, BOSS.baseColor);
   });
 

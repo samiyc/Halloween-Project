@@ -58,6 +58,18 @@ function run(turret, ms, context = {}) {
   return shots;
 }
 
+/**
+ * Long enough for one whole burst of a counted pattern, cooldown included.
+ *
+ * Derived rather than written as "cooldown + 600": the volley grew from three
+ * shots to five while the window stayed put, and the test then failed for a
+ * reason that had nothing to do with what it was checking.
+ *
+ * @param {{shots: number, shotIntervalMs: number}} pattern
+ * @returns {number}
+ */
+const burstMs = (pattern) => TURRET.cooldownMs + pattern.shots * pattern.shotIntervalMs;
+
 /** @returns {Player} */
 const playerAt = (x, y) => new Player({ x: x - PLAYER.size / 2, y: y - PLAYER.size / 2 });
 
@@ -97,14 +109,21 @@ describe("aim geometry", () => {
 
 describe("weightedPick", () => {
   it("respects the weights over a large sample", () => {
+    // A table of its own rather than a real phase: this test is about the
+    // algorithm, and it should not have to be rewritten every time the fight is
+    // rebalanced.
+    const table = [
+      { id: "common", weight: 4 },
+      { id: "rare", weight: 1 },
+    ];
     const rng = createSeededRandom(9);
-    let lasers = 0;
+    let rares = 0;
     const draws = 5000;
 
     for (let index = 0; index < draws; index += 1) {
-      if (weightedPick(rng, PHASE_PATTERNS[1]) === "laser") lasers += 1;
+      if (weightedPick(rng, table) === "rare") rares += 1;
     }
-    const share = lasers / draws;
+    const share = rares / draws;
     assert.ok(Math.abs(share - 0.2) < 0.03, `expected about 1 in 5, got ${share.toFixed(3)}`);
   });
 
@@ -186,9 +205,9 @@ describe("Turret volley", () => {
     assert.equal(run(turret, TURRET.cooldownMs - 200).length, 0);
   });
 
-  it("fires exactly three shots, then falls silent", () => {
+  it("fires its whole burst, then falls silent", () => {
     const turret = turretOf("volley");
-    const burst = run(turret, TURRET.cooldownMs + 600);
+    const burst = run(turret, burstMs(VOLLEY));
 
     assert.equal(burst.length, VOLLEY.shots);
     assert.equal(run(turret, 1500).length, 0, "the cooldown must hold it");
@@ -196,17 +215,17 @@ describe("Turret volley", () => {
 
   it("comes back after the cooldown, and only then", () => {
     const turret = turretOf("volley");
-    run(turret, TURRET.cooldownMs + 600);
-    assert.equal(run(turret, TURRET.cooldownMs + 600).length, VOLLEY.shots);
+    run(turret, burstMs(VOLLEY));
+    assert.equal(run(turret, burstMs(VOLLEY)).length, VOLLEY.shots);
   });
 
   it("fans the burst out when the player moves, without a spread setting", () => {
-    // The three divergent shots come from the barrel still tracking during the
-    // burst. There is no spread parameter, and there should not be one.
+    // The divergent shots come from the barrel still tracking during the burst.
+    // There is no spread parameter, and there should not be one.
     const turret = turretOf("volley");
     let y = 900;
     const burst = [];
-    for (let elapsed = 0; elapsed < TURRET.cooldownMs + 600; elapsed += FRAME) {
+    for (let elapsed = 0; elapsed < burstMs(VOLLEY); elapsed += FRAME) {
       y -= 6;
       burst.push(...turret.update(FRAME, { origin: MOUNT, target: { x: 100, y } }));
     }
@@ -380,13 +399,15 @@ describe("Turret spiral", () => {
 });
 
 describe("Turret heavy shot", () => {
-  it("sends exactly one, five times the size, for a third of the bar", () => {
+  it("sends three discs, five times the size, for a third of the bar each", () => {
     const turret = turretOf("heavy");
-    const shots = run(turret, TURRET.cooldownMs + 300);
+    const shots = run(turret, burstMs(HEAVY));
 
-    assert.equal(shots.length, 1);
-    assert.equal(shots[0].radius, PROJECTILE.radius * 5);
-    assert.equal(shots[0].damage, 50);
+    assert.equal(shots.length, HEAVY.shots);
+    for (const shot of shots) {
+      assert.equal(shot.radius, PROJECTILE.radius * 5);
+      assert.equal(shot.damage, 50);
+    }
   });
 
   it("drifts, rather than being dodged on reflex", () => {
@@ -402,9 +423,10 @@ describe("Turret heavy shot", () => {
     assert.equal(new Projectile({ x: 0, y: 0, angle: 0 }).ring, undefined);
   });
 
-  it("uses its own short cooldown rather than the shared one", () => {
-    // Measured between two shots rather than against a wall clock, so the test
-    // says what it means: how long the turret waits after a heavy shot.
+  it("spaces its own burst, then waits its own short cooldown", () => {
+    // Measured between shots rather than against a wall clock, so the test says
+    // what it means. Two rhythms have to be told apart: 800ms inside a burst,
+    // and the pattern's own 1500ms before the next one — not the shared 2500.
     assert.ok(HEAVY.cooldownMs < TURRET.cooldownMs);
     const turret = turretOf("heavy");
     const times = [];
@@ -414,11 +436,16 @@ describe("Turret heavy shot", () => {
       if (fired.length > 0) times.push(elapsed);
     }
 
-    assert.ok(times.length >= 3, `expected a few heavy shots, got ${times.length}`);
-    const gap = times[2] - times[1];
+    assert.ok(times.length > HEAVY.shots, `expected a second burst, got ${times.length} shots`);
+    const gaps = times.slice(1).map((time, index) => time - times[index]);
+    const close = (gap, expected) => Math.abs(gap - expected) < 2 * FRAME;
+
+    for (const gap of gaps.slice(0, HEAVY.shots - 1)) {
+      assert.ok(close(gap, HEAVY.shotIntervalMs), `inside a burst: ${gap}`);
+    }
     assert.ok(
-      Math.abs(gap - HEAVY.cooldownMs) < 4 * FRAME,
-      `expected about ${HEAVY.cooldownMs}ms between heavy shots, measured ${gap}`,
+      close(gaps[HEAVY.shots - 1], HEAVY.cooldownMs),
+      `between two bursts: ${gaps[HEAVY.shots - 1]}`,
     );
   });
 });
@@ -426,33 +453,40 @@ describe("Turret heavy shot", () => {
 describe("attack tables per boss phase", () => {
   const idsIn = (phase) => patternsForPhase(phase).map((entry) => entry.id);
 
-  it("keeps the three-shot volley in every phase, unchanged", () => {
-    // The baseline the other patterns are read against; it is deliberately the
-    // one thing that never changes across the fight.
-    for (const phase of [1, 2, 3]) {
-      assert.ok(idsIn(phase).includes("volley"), `phase ${phase} lost the volley`);
-    }
+  /** @returns {number} the share of a phase's rolls that go to one pattern */
+  const shareIn = (phase, id) => {
+    const table = patternsForPhase(phase);
+    const total = table.reduce((sum, entry) => sum + entry.weight, 0);
+    return (table.find((entry) => entry.id === id)?.weight ?? 0) / total;
+  };
+
+  it("takes the volley away as the fight goes on", () => {
+    // The escalation is not that something is added, it is that the ordinary
+    // attack is withdrawn: two rolls in three, then one in two, then none.
+    assert.equal(shareIn(1, "volley"), 2 / 3);
+    assert.equal(shareIn(2, "volley"), 1 / 2);
+    assert.equal(shareIn(3, "volley"), 0, "the last phase has no ordinary attack left");
   });
 
   it("gives phase 1 the laser and nothing else", () => {
     assert.deepEqual(idsIn(1).sort(), ["laser", "volley"]);
   });
 
-  it("swaps the laser for the spiral and the heavy shot in phase 2", () => {
-    const ids = idsIn(2);
-    assert.ok(ids.includes("spiral") && ids.includes("heavy"));
-    assert.ok(!ids.includes("laser"), "the laser is a phase 1 signature");
+  it("swaps the laser for the heavy shot in phase 2, one roll in two", () => {
+    assert.deepEqual(idsIn(2).sort(), ["heavy", "volley"]);
+    assert.equal(shareIn(2, "heavy"), 1 / 2);
   });
 
-  it("brings everything together in the last phase", () => {
-    assert.deepEqual(idsIn(3).sort(), ["heavy", "laser", "spiral", "volley"]);
+  it("keeps only the two rare attacks in the last phase", () => {
+    assert.deepEqual(idsIn(3).sort(), ["laser", "spiral"]);
+    assert.equal(shareIn(3, "spiral"), 1 / 2);
+    assert.equal(shareIn(3, "laser"), 1 / 2);
   });
 
-  it("makes each rare attack one roll in five in phase 2", () => {
-    const total = patternsForPhase(2).reduce((sum, entry) => sum + entry.weight, 0);
-    for (const id of ["spiral", "heavy"]) {
-      const entry = patternsForPhase(2).find((candidate) => candidate.id === id);
-      assert.equal(entry.weight / total, 0.2, `${id} should be 1 in 5`);
+  it("brings each attack in at some point in the fight", () => {
+    const everywhere = [1, 2, 3].flatMap(idsIn);
+    for (const { id } of [VOLLEY, LASER, SPIRAL, HEAVY]) {
+      assert.ok(everywhere.includes(id), `${id} is never rolled`);
     }
   });
 
@@ -562,10 +596,10 @@ describe("the beam against the player", () => {
     assert.ok(Math.abs(oneSecond - LASER.dps) < 1e-9);
   });
 
-  it("costs a full pass through it exactly two projectiles", () => {
-    // Doubled when the barrel slowed to 15°/s for the beam: a beam you can
-    // walk out of can afford to hurt more than one you cannot.
-    assert.equal((LASER.dps * LASER.durationMs) / 1000, PROJECTILE.damage * 2);
+  it("costs a full pass through it exactly three projectiles", () => {
+    // Raised each time the barrel slowed down — 10°/s now: a beam you can walk
+    // out of can afford to hurt more than one you cannot.
+    assert.equal((LASER.dps * LASER.durationMs) / 1000, PROJECTILE.damage * 3);
   });
 
   it("spares anyone standing clear of it", () => {
@@ -587,10 +621,17 @@ describe("the beam against the player", () => {
     assert.equal(beamDamage(player, beam, 60_000), beamDamage(player, beam, TIME.maxFrameMs));
   });
 
-  it("matches the mana gauge in width, as the sketch asks", async () => {
+  it("is never thinner than the mana gauge", async () => {
     const { GAUGE } = await import("../src/render/gauges.js");
-    // `config/` cannot import `render/`, so the link is pinned here instead.
-    assert.equal(LASER.beamWidth, GAUGE.thickness);
+    // The two were once equal, because the original sketch asked for a beam
+    // "as wide as the mana bar". The beam has since become a threat setting of
+    // its own and was widened; what is still worth pinning is the floor — the
+    // gauge width is the one proven legible against the board.
+    // `config/` cannot import `render/`, so the link lives here.
+    assert.ok(
+      LASER.beamWidth >= GAUGE.thickness,
+      `beam ${LASER.beamWidth} must not fall under the gauge ${GAUGE.thickness}`,
+    );
   });
 });
 
