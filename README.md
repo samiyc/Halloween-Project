@@ -161,3 +161,15 @@ Pour repartir d'une campagne vierge :
 ```js
 localStorage.removeItem("spellblaster.progress");   // puis recharger
 ```
+
+Et pour ouvrir toute la campagne sans la rejouer, deux interrupteurs dans
+`src/config/dev.js` :
+
+| Flag | Effet |
+| --- | --- |
+| `unlockAllLevels` | Tous les épisodes jouables, quelle que soit la sauvegarde |
+| `revealAllStories` | Les textes de fin lisibles dans le menu sans avoir gagné |
+
+Ils ne touchent jamais à la progression enregistrée, et le sous-titre du menu
+affiche « mode dev » tant que l'un des deux est actif. À remettre à `false`
+avant de committer.

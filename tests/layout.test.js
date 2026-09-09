@@ -23,7 +23,9 @@ import {
   menuButtons,
   menuColumns,
   pauseButton,
+  STORY_PANEL,
   storyButtons,
+  storyLines,
   storyPanel,
   trainingButtons,
   wrapLines,
@@ -337,12 +339,12 @@ describe("button geometry", () => {
   });
 
   it("puts the story panel under both columns, inside the canvas", () => {
-    const panel = storyPanel();
+    const { rect } = storyPanel(LEVELS[0], false);
     const lastStory = storyButtons(fresh()).at(-1).rect;
 
-    assert.ok(panel.y > lastStory.y + lastStory.height, "the panel would cover the buttons");
-    assert.ok(panel.y + panel.height <= CANVAS.height);
-    assert.ok(panel.width > 0 && panel.height > 0);
+    assert.ok(rect.y > lastStory.y + lastStory.height, "the panel would cover the buttons");
+    assert.ok(rect.y + rect.height <= CANVAS.height);
+    assert.ok(rect.width > 0 && rect.height > 0);
   });
 
   it("tells the click handler what a button is without parsing its id", () => {
@@ -461,5 +463,63 @@ describe("wrapLines", () => {
   it("returns nothing for nothing", () => {
     assert.deepEqual(wrapLines("", 40), []);
     assert.deepEqual(wrapLines("   ", 40), []);
+  });
+});
+
+describe("the story panel", () => {
+  it("leaves as much room under the last line as above the title", () => {
+    // The defect this exists for: the panel was a fixed rectangle the text was
+    // poured into, so a won episode — brief, blank line, debrief — ended eight
+    // pixels from the border and the descenders touched it.
+    for (const level of LEVELS) {
+      for (const completed of [false, true]) {
+        const { rect, title, lines } = storyPanel(level, completed);
+        const above = title.y - STORY_PANEL.titleHeight - rect.y;
+        const below = rect.y + rect.height - (lines.at(-1).y + STORY_PANEL.descender);
+
+        assert.equal(above, below, `${level.id} (completed: ${completed})`);
+        assert.equal(above, STORY_PANEL.pad);
+      }
+    }
+  });
+
+  it("keeps every line inside the panel", () => {
+    for (const level of LEVELS) {
+      const { rect, title, lines } = storyPanel(level, true);
+      for (const { y } of [title, ...lines]) {
+        assert.ok(y > rect.y, `${level.id}: a line above the panel`);
+        assert.ok(y + STORY_PANEL.descender <= rect.y + rect.height, `${level.id}: overflow`);
+      }
+    }
+  });
+
+  it("fits inside the canvas for every episode, won or not", () => {
+    // This is what keeps a story text to the three-to-five lines
+    // docs/story-mode.md asks for: a level that gets chatty fails here rather
+    // than off the bottom of somebody's screen.
+    for (const level of LEVELS) {
+      const { rect } = storyPanel(level, true);
+      assert.ok(
+        rect.y + rect.height <= CANVAS.height,
+        `${level.id}: its story is too long for the panel`,
+      );
+    }
+  });
+
+  it("grows with the text rather than staying a fixed box", () => {
+    const short = storyPanel(LEVELS[0], false);
+    const long = storyPanel(LEVELS[0], true);
+
+    assert.ok(long.lines.length > short.lines.length, "a won episode says more");
+    assert.ok(long.rect.height > short.rect.height, "so its panel must be taller");
+    assert.equal(long.rect.y, short.rect.y, "both hang from the same top edge");
+  });
+
+  it("adds the debrief only once the episode is won", () => {
+    assert.deepEqual(storyLines(LEVELS[0], false), wrapLines(LEVELS[0].brief, STORY_PANEL.maxChars));
+
+    const won = storyLines(LEVELS[0], true);
+    assert.ok(won.includes(""), "a blank line separates the two paragraphs");
+    assert.ok(won.length > storyLines(LEVELS[0], false).length);
   });
 });

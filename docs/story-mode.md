@@ -137,6 +137,11 @@ Trois règles de robustesse, chacune couverte par un test :
 - **Un petit bouton info** est accolé à chaque niveau débloqué. Il ne lance
   rien : il déplie le texte de l'histoire **sous** le menu. Un second clic le
   replie ; cliquer sur un autre bascule dessus.
+- **Le panneau se dimensionne sur son texte.** Sa hauteur est calculée à partir
+  du nombre de lignes, si bien que la marge sous la dernière ligne est toujours
+  celle qui surplombe le titre. C'était un rectangle de hauteur fixe dans lequel
+  le texte était versé : un épisode terminé — brief, ligne vide, debrief —
+  finissait à huit pixels de la bordure.
 
 Toute la géométrie reste dans `src/render/layout.js`, qui ne touche aucun `ctx`
 et que les tests peuvent donc vérifier : les mêmes rectangles servent au dessin
@@ -146,6 +151,29 @@ cliquable.
 Le repli du texte passe par `wrapLines(text, maxChars)`, une fonction pure —
 pas de `ctx.measureText()`. Les polices du menu sont fixes, une largeur en
 caractères suffit, et le panneau reste testable.
+
+## Déverrouiller la campagne en dev
+
+Tester le cinquième épisode ne doit pas demander de gagner les quatre premiers.
+`src/config/dev.js` porte deux interrupteurs, **indépendants** :
+
+| Flag | Effet |
+| --- | --- |
+| `unlockAllLevels` | Ouvre les cinq épisodes, quelle que soit la sauvegarde |
+| `revealAllStories` | Affiche les textes de fin dans le menu sans avoir gagné |
+
+Trois règles qui les rendent sûrs :
+
+- **`isCompleted()` ne ment jamais.** Les flags changent ce qu'on peut *lancer*
+  et ce qu'on peut *lire*, pas ce qui a été *gagné* : les boutons continuent
+  d'afficher « Nouvel épisode », et rien n'est écrit dans la sauvegarde. La
+  vraie progression est donc intacte quand on les remet à `false`.
+- **Le menu le dit.** Dès qu'un flag est actif, le sous-titre devient
+  « … — mode dev ». C'est ce qui remplace un test « les flags doivent être à
+  `false` » : un tel test virerait au rouge exactement pendant qu'on s'en sert,
+  c'est-à-dire au moment où le rouge ne sert à rien.
+- **À remettre à `false` avant de committer.** Rien ne l'impose
+  automatiquement ; le rappel à l'écran est là pour que l'oubli se voie.
 
 ## Les textes
 
@@ -175,11 +203,12 @@ trouve. Voir [lore.md](lore.md).
 | Fichier | Rôle |
 | --- | --- |
 | `src/config/levels.js` | Le registre des niveaux : données pures, aucun code |
+| `src/config/dev.js` | Les deux interrupteurs de développement |
 | `src/game/progress.js` | Ce qui est débloqué, ce qui est terminé — pur, stockage injecté |
 | `src/engine/storage.js` | Le seul endroit qui touche `localStorage` |
 | `src/game/session.js` | `startLevel()`, `noteOutcome()`, quel texte est déplié |
 | `src/entities/boss.js` | `arrivalDelayMs` et la phase `waiting` |
-| `src/render/layout.js` | Les deux colonnes, les boutons info, `wrapLines()` |
+| `src/render/layout.js` | Les deux colonnes, les boutons info, `wrapLines()`, la géométrie du panneau |
 | `src/render/menu.js` | Le dessin du menu et du panneau de texte |
 | `src/render/hud.js` | Le nom du niveau, le paragraphe de victoire |
 

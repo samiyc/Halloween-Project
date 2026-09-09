@@ -220,18 +220,78 @@ function storyHint(level, progress, unlocked) {
 }
 
 /**
- * The panel under the menu where an episode's story is written.
- * @returns {Rect}
+ * The story panel's text metrics.
+ *
+ * Here rather than in `menu.js` for the reason `LINE_HEIGHT` is here: a number
+ * kept in the drawing code is a number no test can reach, and that is exactly
+ * how the "Échap" hint ended up sitting on the pause button's bottom border.
+ *
+ * `descender` is the room left under the last baseline. Without it the panel
+ * ended a few pixels under the text and the tails of the g's and p's touched
+ * the border.
  */
-export function storyPanel() {
+export const STORY_PANEL = Object.freeze({
+  pad: 28,
+  maxChars: 96,
+  /** Baseline of the title, measured down from the padded top. */
+  titleHeight: 24,
+  gapAfterTitle: 42,
+  lineHeight: 28,
+  descender: 8,
+});
+
+/**
+ * The brief, plus the debrief once the episode has been won.
+ *
+ * The empty string between the two is a blank line: the wrapping is done here,
+ * so what comes out is a list of lines and nothing more.
+ *
+ * @param {import("../config/levels.js").Level} level
+ * @param {boolean} completed
+ * @returns {string[]}
+ */
+export function storyLines(level, completed) {
+  const brief = wrapLines(level.brief, STORY_PANEL.maxChars);
+  if (!completed) return brief;
+  return [...brief, "", ...wrapLines(level.debrief, STORY_PANEL.maxChars)];
+}
+
+/**
+ * The panel under the menu where an episode's story is written: its rectangle
+ * and every baseline inside it.
+ *
+ * **The height follows the text**, so the margin under the last line is the
+ * same as the one above the title whatever the episode says. The panel used to
+ * be a fixed rectangle the text was simply poured into, which left a won
+ * episode — brief, blank line, debrief — ending 8px from the border.
+ *
+ * A test walks every episode and checks the panel still fits the canvas: that
+ * is what keeps a story text to the three-to-five lines `docs/story-mode.md`
+ * asks for.
+ *
+ * @param {import("../config/levels.js").Level} level
+ * @param {boolean} completed
+ * @returns {{rect: Rect, title: {y: number}, lines: {text: string, y: number}[]}}
+ */
+export function storyPanel(level, completed) {
+  const { pad, titleHeight, gapAfterTitle, lineHeight, descender } = STORY_PANEL;
   const columns = menuColumns();
   const { height, gap } = MENU_BUTTON;
   const top = MENU_TOP + LEVELS.length * (height + gap) + 40;
+
+  const texts = storyLines(level, completed);
+  const firstLineY = top + pad + titleHeight + gapAfterTitle;
+  const lastLineY = firstLineY + Math.max(0, texts.length - 1) * lineHeight;
+
   return {
-    x: columns.training,
-    y: top,
-    width: columns.info + INFO_BUTTON.size - columns.training,
-    height: CANVAS.height - top - 60,
+    rect: {
+      x: columns.training,
+      y: top,
+      width: columns.info + INFO_BUTTON.size - columns.training,
+      height: lastLineY + descender + pad - top,
+    },
+    title: { y: top + pad + titleHeight },
+    lines: texts.map((text, index) => ({ text, y: firstLineY + index * lineHeight })),
   };
 }
 

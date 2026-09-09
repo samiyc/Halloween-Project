@@ -1,12 +1,13 @@
+import { IS_DEV_MODE } from "../config/dev.js";
 import { levelOf } from "../config/levels.js";
 import { CANVAS } from "../config/settings.js";
 import {
+  STORY_PANEL,
   buttonLines,
   menuButtons,
   menuColumns,
   storyPanel,
   trainingButtons,
-  wrapLines,
 } from "./layout.js";
 import { FONTS, PALETTE } from "./palette.js";
 
@@ -18,9 +19,6 @@ import { FONTS, PALETTE } from "./palette.js";
  * `layout.js`, which the click handling reads too. A button drawn here is a
  * button that can be pressed, by construction.
  */
-
-/** Text lines in the story panel, at `FONTS.label` and its padding. */
-const PANEL = Object.freeze({ pad: 28, lineHeight: 28, maxChars: 96 });
 
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -98,7 +96,11 @@ function drawTitles(ctx, session) {
 
   ctx.fillStyle = PALETTE.textMuted;
   ctx.font = FONTS.hint;
-  ctx.fillText("Choisissez une mission — Échap pour revenir", CANVAS.width / 2, top - 70);
+  // The dev switches announce themselves: one left on in a commit is then
+  // visible the moment the page opens, which no test can do without turning
+  // red exactly while the switch is being used. See `config/dev.js`.
+  const hint = IS_DEV_MODE ? " — mode dev" : "";
+  ctx.fillText(`Choisissez une mission — Échap pour revenir${hint}`, CANVAS.width / 2, top - 70);
 
   ctx.textAlign = "left";
   ctx.font = FONTS.label;
@@ -109,8 +111,10 @@ function drawTitles(ctx, session) {
 /**
  * The story of the episode whose info button was pressed.
  *
- * The `debrief` only appears once the episode has been won: it says how it
+ * The `debrief` only appears once the episode has been won — it says how it
  * ended, so showing it beforehand would spoil the one thing the level is for.
+ * `showsStoryOf()` rather than `isCompleted()` is what lets the dev switch
+ * reveal them all without claiming any of them was played.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {{progress?: object, infoLevelId?: string|null}} session
@@ -118,9 +122,15 @@ function drawTitles(ctx, session) {
 function drawStory(ctx, session) {
   const level = levelOf(session.infoLevelId ?? null);
   if (!level) return;
-  const completed = session.progress?.isCompleted(level.id) ?? false;
 
-  const rect = storyPanel();
+  // Everything below is placed by `layout.js`, rectangle and baselines alike:
+  // not one position is written in this file.
+  const { rect, title, lines } = storyPanel(
+    level,
+    session.progress?.showsStoryOf(level.id) ?? false,
+  );
+  const x = rect.x + STORY_PANEL.pad;
+
   ctx.strokeStyle = PALETTE.slotEmpty;
   ctx.lineWidth = 2;
   ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
@@ -128,29 +138,11 @@ function drawStory(ctx, session) {
   ctx.textAlign = "left";
   ctx.fillStyle = PALETTE.text;
   ctx.font = FONTS.hud;
-  ctx.fillText(level.name, rect.x + PANEL.pad, rect.y + PANEL.pad + 20);
+  ctx.fillText(level.name, x, title.y);
 
   ctx.fillStyle = PALETTE.textMuted;
   ctx.font = FONTS.label;
-  let y = rect.y + PANEL.pad + 66;
-  for (const line of storyLines(level, completed)) {
-    ctx.fillText(line, rect.x + PANEL.pad, y);
-    y += PANEL.lineHeight;
+  for (const line of lines) {
+    ctx.fillText(line.text, x, line.y);
   }
-}
-
-/**
- * The brief, plus the debrief once the episode has been won.
- *
- * An empty string between the two is a blank line: the wrapping is done, so
- * this is a list of lines and nothing more.
- *
- * @param {import("../config/levels.js").Level} level
- * @param {boolean} completed
- * @returns {string[]}
- */
-function storyLines(level, completed) {
-  const brief = wrapLines(level.brief, PANEL.maxChars);
-  if (!completed) return brief;
-  return [...brief, "", ...wrapLines(level.debrief, PANEL.maxChars)];
 }

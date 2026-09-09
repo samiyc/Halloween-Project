@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { DEV, IS_DEV_MODE } from "../src/config/dev.js";
 import { DIFFICULTIES } from "../src/config/difficulty.js";
 import { FIRST_LEVEL_ID, LEVELS, LEVEL_IDS, levelOf } from "../src/config/levels.js";
 import { BOSS, TIME } from "../src/config/settings.js";
@@ -154,6 +155,56 @@ describe("Progress saving", () => {
 
     assert.equal(progress.isUnlocked(LEVEL_IDS[1]), false);
     assert.deepEqual(JSON.parse(storage.read()).completed, []);
+  });
+});
+
+describe("the dev switches", () => {
+  it("are off by default, so a plain Progress behaves as it always did", () => {
+    const progress = new Progress();
+    assert.equal(progress.unlockAll, false);
+    assert.equal(progress.revealAll, false);
+    assert.equal(progress.isUnlocked(LEVEL_IDS[1]), false);
+  });
+
+  it("opens every episode without pretending any of them was won", () => {
+    const progress = new Progress({ storage: memoryStorage(), unlockAll: true });
+
+    for (const id of LEVEL_IDS) {
+      assert.equal(progress.isUnlocked(id), true, `${id} should be open`);
+      assert.equal(progress.isCompleted(id), false, `${id} must not claim a win`);
+    }
+    // Still not a level, still not unlocked.
+    assert.equal(progress.isUnlocked("forest-999"), false);
+  });
+
+  it("leaves the save file alone while it is on", () => {
+    const storage = memoryStorage();
+    const progress = new Progress({ storage, unlockAll: true, revealAll: true });
+
+    assert.equal(storage.read(), null, "opening levels must not write a progression");
+    assert.deepEqual([...progress.completed], []);
+  });
+
+  it("reveals the closing texts without unlocking anything", () => {
+    const progress = new Progress({ storage: memoryStorage(), revealAll: true });
+
+    assert.equal(progress.showsStoryOf(LEVEL_IDS[2]), true);
+    assert.equal(progress.isUnlocked(LEVEL_IDS[2]), false, "the two switches are separate");
+    assert.equal(progress.isCompleted(LEVEL_IDS[2]), false);
+  });
+
+  it("shows a closing text for a level actually won, switches or not", () => {
+    const { progress } = saved();
+    assert.equal(progress.showsStoryOf(LEVEL_IDS[0]), false);
+    progress.complete(LEVEL_IDS[0]);
+    assert.equal(progress.showsStoryOf(LEVEL_IDS[0]), true);
+  });
+
+  it("tells the menu when anything is on", () => {
+    // What replaces a test asserting the flags are false: such a test would go
+    // red exactly while the switch is being used, which is when red is useless.
+    // The menu says "mode dev" instead.
+    assert.equal(IS_DEV_MODE, Object.values(DEV).some(Boolean));
   });
 });
 

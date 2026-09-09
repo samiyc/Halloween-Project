@@ -19,7 +19,7 @@ node --test --test-name-pattern="mêlée"         # un test par son nom
 
 ### Ce qui est couvert
 
-**367 tests, 100 % des lignes** de tous les modules de logique.
+**378 tests, 100 % des lignes** de tous les modules de logique.
 
 | Fichier | Ce qu'il vérifie |
 | --- | --- |
@@ -29,7 +29,8 @@ node --test --test-name-pattern="mêlée"         # un test par son nom
 | `combat.test.js` | Portée de la mêlée, ciblage du plus proche, invincibilité du boss |
 | `game.test.js` | Parties complètes : victoire, défaite, score, spawn, déterminisme |
 | `threat.test.js` | Les repères du bas : qui est suivi, les seuils, un repère par menace |
-| `campaign.test.js` | Le mode histoire : registre des niveaux, déblocage, sauvegarde, arrivée du boss |
+| `campaign.test.js` | Le mode histoire : registre des niveaux, déblocage, sauvegarde, arrivée du boss, flags dev |
+| `layout.test.js` | Géométrie des boutons et du menu, panneau d'histoire, coordonnées du pointeur |
 
 Ce qui n'est pas testé : `render/` — hors ses tables pures, `layout.js` et les
 couleurs de `palette.js` —, `engine/keyboard.js`, `engine/pointer.js`,

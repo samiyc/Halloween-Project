@@ -45,8 +45,8 @@ inside a unit test. Do not reintroduce `ctx` into an entity.
 ```
 halloween.html → src/main.js   (the only module aware of both DOM and game)
 src/
-  config/    glyphs.js, settings.js, difficulty.js, levels.js — single source
-             of truth
+  config/    glyphs.js, settings.js, difficulty.js, levels.js, dev.js — single
+             source of truth
   tools/     random.js — the only Math.random() in the repo; color.js,
              aim.js, hit-flash.js
   entities/  Entity → Enemy, Boss, Player   (state + behaviour, no drawing)
@@ -237,6 +237,19 @@ Tune with `MANA.costCommon` first, then `ENEMY.baseSpeed` / `SPAWN.chancePerFram
   square per open episode that unfolds its text under the menu. All of it comes
   out of `layout.js`, which still touches no ctx; `wrapLines()` wraps by
   character count rather than `ctx.measureText()` so the panel stays testable.
+- **`storyPanel()` returns the rectangle *and* every baseline**, and its height
+  follows the text — so the margin under the last line is the one above the
+  title, whatever an episode says. It was a fixed box the text was poured into,
+  and a won episode ended 8px from the border. A test walks all five episodes
+  and fails if one no longer fits the canvas: that is what keeps a story text to
+  three-to-five lines.
+- **`src/config/dev.js`** carries `unlockAllLevels` and `revealAllStories`,
+  defaulted into `Progress` so switching one on is a one-line edit in one file.
+  **`isCompleted()` is never affected** — the switches change what can be
+  started and what can be read, never what was won, so nothing false reaches the
+  save file. The menu subtitle says "mode dev" while either is on, which is what
+  replaces a test asserting they are false: such a test would go red exactly
+  while the switch is in use.
 - Buttons carry a **`kind`** ("difficulty", "resume", "level", "info") and the
   click handler branches on it. Do not parse ids back apart.
 

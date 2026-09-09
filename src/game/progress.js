@@ -1,3 +1,4 @@
+import { DEV } from "../config/dev.js";
 import { LEVEL_IDS } from "../config/levels.js";
 
 /**
@@ -23,17 +24,49 @@ export class Progress {
    * @param {object} [options]
    * @param {import("../engine/storage.js").Storage|null} [options.storage]
    * @param {readonly string[]} [options.order] Injected for tests.
+   * @param {boolean} [options.unlockAll] See `config/dev.js`. Defaulted from
+   *   there rather than wired through `main.js`, so switching it on is a
+   *   one-line edit in one file.
+   * @param {boolean} [options.revealAll]
    */
-  constructor({ storage = null, order = LEVEL_IDS } = {}) {
+  constructor({
+    storage = null,
+    order = LEVEL_IDS,
+    unlockAll = DEV.unlockAllLevels,
+    revealAll = DEV.revealAllStories,
+  } = {}) {
     this.storage = storage;
     this.order = order;
+    this.unlockAll = unlockAll;
+    this.revealAll = revealAll;
     /** @type {Set<string>} */
     this.completed = new Set(readCompleted(storage, order));
   }
 
-  /** @param {string} levelId */
+  /**
+   * Whether the episode was actually won.
+   *
+   * **Never affected by the dev switches.** It is what the button hint and the
+   * save file are built on: making it lie would make a switch left on
+   * impossible to notice, and would write a false progression to disk.
+   *
+   * @param {string} levelId
+   */
   isCompleted(levelId) {
     return this.completed.has(levelId);
+  }
+
+  /**
+   * Whether the menu may show this episode's closing paragraph.
+   *
+   * Apart from `isCompleted()` because that is the one thing the dev switch is
+   * allowed to override: reading the texts is not the same as having earned
+   * them.
+   *
+   * @param {string} levelId
+   */
+  showsStoryOf(levelId) {
+    return this.isCompleted(levelId) || this.revealAll;
   }
 
   /**
@@ -43,6 +76,7 @@ export class Progress {
   isUnlocked(levelId) {
     const index = this.order.indexOf(levelId);
     if (index < 0) return false;
+    if (this.unlockAll) return true;
     return index === 0 || this.isCompleted(this.order[index - 1]);
   }
 
